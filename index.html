@@ -1,3 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Баксик и Серый: Тверь</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  html, body { height: 100%; overflow: hidden; background: #1a1a2e; }
+  body { font-family: system-ui, -apple-system, sans-serif; color: #fff; display: flex; align-items: center; justify-content: center; touch-action: none; }
+  #game { position: relative; width: 100vw; height: 100vh; max-width: 500px; max-height: 900px; overflow: hidden; background: url('bg.png') center/cover no-repeat; background-color: #2a2a4a; }
+  canvas { display: block; width: 100%; height: 100%; background: transparent; }
+  #menu {
+    position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 15px; padding: 20px; background: rgba(26, 26, 46, 0.7); text-align: center; backdrop-filter: blur(3px); overflow-y: auto;
+  }
+  #menu h1 { font-size: 24px; color: #ffd166; }
+  #menu p { font-size: 14px; opacity: 0.85; max-width: 330px; line-height: 1.4; }
+  .cats { display: flex; gap: 16px; margin: 10px 0; }
+  .cat-btn {
+    width: 120px; padding: 14px 10px; border-radius: 16px; border: 3px solid transparent;
+    background: #3a3a5a; color: #fff; font-size: 16px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform 0.1s;
+  }
+  .cat-btn:active { transform: scale(0.95); }
+  .cat-btn.selected { border-color: #ffd166; background: #4a4a6a; }
+  .cat-img { width: 60px; height: 60px; object-fit: contain; }
+  .cat-desc { font-size: 11px; opacity: 0.75; }
+  #start-btn {
+    padding: 16px 40px; font-size: 20px; border-radius: 999px; border: none;
+    background: #ffd166; color: #1a1a2e; font-weight: bold; cursor: pointer; display: none;
+  }
+  #shop-btn {
+    padding: 12px 30px; font-size: 16px; border-radius: 999px; border: 2px solid #4cd137;
+    background: rgba(76, 209, 55, 0.15); color: #4cd137; font-weight: bold; cursor: pointer;
+  }
+  #shop {
+    position: absolute; inset: 0; z-index: 15; display: none; flex-direction: column;
+    background: rgba(26, 26, 46, 0.95); padding: 16px; overflow-y: auto; backdrop-filter: blur(5px);
+  }
+  #shop h2 { text-align: center; color: #ffd166; margin-bottom: 6px; font-size: 22px; }
+  #shop .balance { text-align: center; color: #4cd137; font-size: 18px; margin-bottom: 14px; font-weight: bold; }
+  .shop-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 10px;
+    background: #2a2a4a; border-radius: 14px; border: 1px solid #3a3a5a;
+  }
+  .shop-item .icon { font-size: 30px; width: 44px; text-align: center; }
+  .shop-item .info { flex: 1; }
+  .shop-item .info .name { font-size: 15px; font-weight: bold; }
+  .shop-item .info .desc { font-size: 12px; opacity: 0.7; line-height: 1.3; }
+  .shop-item .lvl { font-size: 11px; color: #6bb9f0; margin-top: 2px; }
+  .shop-item button {
+    padding: 10px 14px; border-radius: 10px; border: none; font-weight: bold; font-size: 14px;
+    background: #ffd166; color: #1a1a2e; cursor: pointer; min-width: 90px;
+  }
+  .shop-item button:disabled { background: #555; color: #888; }
+  .shop-item button.maxed { background: #4cd137; color: #1a1a2e; }
+  #shop-close {
+    padding: 14px; margin-top: 10px; border-radius: 999px; border: none; font-size: 18px;
+    font-weight: bold; background: #ff6b6b; color: #fff; cursor: pointer;
+  }
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 5; display: none;
+    flex-direction: column; gap: 5px; padding: 12px 16px; font-size: 16px; font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8); pointer-events: none;
+  }
+  #hud .row { display: flex; justify-content: space-between; align-items: center; }
+  #hud .score { color: #ffd166; }
+  #hud .combo { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); font-size: 24px; color: #ff6b6b; opacity: 0; transition: opacity 0.2s; }
+  #level-info { text-align: center; font-size: 13px; color: #4cd137; text-transform: uppercase; }
+  #buffs { display: flex; gap: 10px; justify-content: center; margin-top: 5px; }
+  .buff-icon { font-size: 20px; text-shadow: 0 0 10px #fff; }
+  #hug-bar-wrap { width: 100%; height: 14px; border-radius: 999px; background: rgba(255,255,255,0.15); overflow: hidden; border: 1px solid rgba(255,255,255,0.2); margin-top: 4px; }
+  #hug-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ff6b6b, #ff9f43); transition: width 0.15s linear; }
+  #hug-label { font-size: 11px; opacity: 0.85; margin-top: 2px; text-align: center; }
+  #jump-btn, #duck-btn {
+    position: absolute; bottom: 30px; z-index: 5; width: 110px; height: 110px; border-radius: 50%;
+    background: rgba(255, 209, 102, 0.2); border: 4px solid #ffd166; color: #ffd166; font-size: 18px; font-weight: bold;
+    cursor: pointer; display: none; align-items: center; justify-content: center; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px); touch-action: none;
+  }
+  #jump-btn { right: 20px; }
+  #duck-btn { left: 20px; background: rgba(107, 185, 240, 0.2); border-color: #6bb9f0; color: #6bb9f0;}
+  #jump-btn:active { transform: scale(0.95); }
+  #duck-btn:active { transform: scale(0.95); }
+  #music-btn { position: absolute; top: 60px; right: 16px; z-index: 20; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display: none; }
+  #gameover {
+    position: absolute; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 15px; background: rgba(26, 26, 46, 0.85); text-align: center; padding: 20px; backdrop-filter: blur(5px);
+  }
+  #gameover h2 { font-size: 26px; color: #ff6b6b; }
+  #gameover .score-board { font-size: 22px; color: #ffd166; margin-bottom: 10px; }
+  #gameover .best { font-size: 16px; color: #4cd137; margin-bottom: 4px; }
+  #gameover .earned { font-size: 16px; color: #ffd166; margin-bottom: 14px; }
+  .btn-group { display: flex; gap: 10px; flex-direction: column; width: 100%; max-width: 250px;}
+  #gameover button { padding: 14px 20px; font-size: 18px; border-radius: 999px; border: none; font-weight: bold; cursor: pointer; }
+  #restart-btn { background: #ffd166; color: #1a1a2e; }
+  #share-btn { background: #0088cc; color: #fff; }
+  #shop-open-btn { background: #4cd137; color: #1a1a2e; }
+</style>
+</head>
+<body>
+<div id="game">
+  <audio id="bg-music" src="music.mp3" loop></audio>
+  <canvas id="canvas"></canvas>
+
+  <div id="hud">
+    <div class="row">
+      <div>❤️ <span id="lives">3</span></div>
+      <div id="level-info">Ур. 1: Дело — потеха</div>
+      <div class="score">🦐 <span id="score">0</span></div>
+    </div>
+    <div id="buffs"></div>
+    <div id="hug-bar-wrap"><div id="hug-bar"></div></div>
+    <div id="hug-label">Обнимашки Вероники</div>
+    <div class="combo" id="combo-text">x2</div>
+  </div>
+
+  <div id="menu">
+    <h1>Баксик и Серый</h1>
+    <p>Уворачивайся от бабушек, пригибайся от голубей и не дай Веронике догнать тебя!</p>
+    <div class="cats">
+      <button class="cat-btn" data-cat="baksik">
+        <img src="baksik.png" class="cat-img" alt="Баксик">
+        <span>Баксик</span>
+        <span class="cat-desc">Двойной прыжок</span>
+      </button>
+      <button class="cat-btn" data-cat="grey">
+        <img src="grey.png" class="cat-img" alt="Серый">
+        <span>Серый</span>
+        <span class="cat-desc">Какает на Веронику</span>
+      </button>
+    </div>
+    <button id="start-btn">Играть</button>
+    <button id="shop-btn">🛒 Магазин</button>
+  </div>
+
+  <div id="shop">
+    <h2>🛒 Магазин Баксика</h2>
+    <div class="balance">🦐 <span id="shop-balance">0</span> креветок</div>
+    <div id="shop-items"></div>
+    <button id="shop-close">Закрыть</button>
+  </div>
+
+  <button id="duck-btn">ВНИЗ</button>
+  <button id="jump-btn">ПРЫЖОК</button>
+  <button id="music-btn">🔇</button>
+
+  <div id="gameover">
+    <h2 id="gameover-title">Вероника догнала!</h2>
+    <div class="score-board">Счёт: <span id="final-score">0</span></div>
+    <div class="best">Твой рекорд: <span id="best-score">0</span></div>
+    <div class="earned">Заработано: 🦐 <span id="earned-shrimp">0</span></div>
+    <div class="btn-group">
+      <button id="shop-open-btn">🛒 В магазин</button>
+      <button id="share-btn">Похвастаться друзьям</button>
+      <button id="restart-btn">Ещё раз</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.ready(); }
@@ -6,7 +168,6 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 let W = 0, H = 0;
 
-// Загрузка картинок
 const imgBaksik = new Image(); imgBaksik.src = 'baksik.png';
 const imgGrey = new Image(); imgGrey.src = 'grey.png';
 const imgTomato = new Image(); imgTomato.src = 'tomato.png';
@@ -26,7 +187,6 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-// --- МУЗЫКА ---
 const bgMusic = document.getElementById('bg-music');
 const musicBtn = document.getElementById('music-btn');
 let isMusicPlaying = false;
@@ -40,9 +200,6 @@ musicBtn.addEventListener('pointerdown', (e) => {
     else { bgMusic.play(); musicBtn.textContent = '🔊'; isMusicPlaying = true; }
 });
 
-// ============================================================
-//  ПРОКАЧКА И МАГАЗИН
-// ============================================================
 const UPGRADES = [
   { id: 'life',   icon: '❤️', name: 'Запасное сердечко', desc: '+1 к макс. жизням за уровень',           maxLvl: 3, baseCost: 15 },
   { id: 'shrimp', icon: '🦐', name: 'Креветочный магнит', desc: '+20% креветок за уровень',               maxLvl: 5, baseCost: 10 },
@@ -58,10 +215,15 @@ UPGRADES.forEach(u => progress.upgrades[u.id] = 0);
 
 function saveProgress() {
   const data = JSON.stringify(progress);
-  if (tg && tg.CloudStorage) tg.CloudStorage.setItem('progress', data);
+  if (tg && tg.CloudStorage) {
+    try { tg.CloudStorage.setItem('progress', data); } catch(e){}
+  }
   try { localStorage.setItem('catProgress', data); } catch(e){}
 }
+
 function loadProgress(cb) {
+  let called = false;
+  const done = () => { if (!called) { called = true; cb(); } };
   const parse = (val) => {
     if (val) {
       try {
@@ -75,13 +237,18 @@ function loadProgress(cb) {
         }
       } catch(e){}
     }
-    cb();
+    done();
   };
+  setTimeout(done, 1500);
   if (tg && tg.CloudStorage) {
-    tg.CloudStorage.getItem('progress', (err, val) => {
-      if (val) parse(val);
-      else { try { parse(localStorage.getItem('catProgress')); } catch(e){ parse(null); } }
-    });
+    try {
+      tg.CloudStorage.getItem('progress', (err, val) => {
+        if (val) parse(val);
+        else { try { parse(localStorage.getItem('catProgress')); } catch(e){ parse(null); } }
+      });
+    } catch(e) {
+      try { parse(localStorage.getItem('catProgress')); } catch(e2){ parse(null); }
+    }
   } else {
     try { parse(localStorage.getItem('catProgress')); } catch(e){ parse(null); }
   }
@@ -99,7 +266,7 @@ function buyUpgrade(u) {
   progress.upgrades[u.id]++;
   saveProgress();
   renderShop();
-  if (tg) tg.HapticFeedback.notificationOccurred('success');
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 }
 
 function renderShop() {
@@ -136,14 +303,9 @@ function openShop() {
 }
 function closeShop() {
   document.getElementById('shop').style.display = 'none';
-  // Возврат в меню или на экран Game Over
-  const menu = document.getElementById('menu');
-  const gameover = document.getElementById('gameover');
-  if (gameover.style.display === 'flex') return;
-  menu.style.display = 'flex';
+  document.getElementById('menu').style.display = 'flex';
 }
 
-// Геттеры прокачки
 function getMaxLives()    { return 3 + progress.upgrades.life; }
 function getJumpMult()    { return 1 + 0.08 * progress.upgrades.jump; }
 function getSlowMult()    { return 1 - 0.05 * progress.upgrades.slow; }
@@ -152,9 +314,6 @@ function getInvBonus()    { return progress.upgrades.inv; }
 function getShrimpMult()  { return 1 + 0.2 * progress.upgrades.shrimp; }
 function getStartLevel()  { return progress.upgrades.start > 0 ? 1 : 0; }
 
-// ============================================================
-//  ИГРОВОЕ СОСТОЯНИЕ
-// ============================================================
 const LEVELS = [
   { name: 'Дело — потеха', dist: 0, tint: 'rgba(26, 26, 46, 0)' },
   { name: 'Портки дымятся', dist: 600, tint: 'rgba(255, 120, 0, 0.15)' },
@@ -222,7 +381,7 @@ function update(dt) {
       state.worldSpeed += 60;
       state.spawnInterval = Math.max(0.4, state.spawnInterval - 0.1);
       document.getElementById('level-info').textContent = `Ур. ${state.currentLevel + 1}: ${LEVELS[state.currentLevel].name}`;
-      if (tg) tg.HapticFeedback.notificationOccurred('success');
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     }
   }
   if (state.levelUpTimer > 0) state.levelUpTimer -= dt;
@@ -271,7 +430,7 @@ function update(dt) {
       }
       else if (o.type === 'mayo') {
         state.mayoCount++; state.score += 2; o.collected = true;
-        if (state.mayoCount >= 3) { state.invincibleTimer = 5 + getInvBonus(); state.mayoCount = 0; if(tg) tg.HapticFeedback.notificationOccurred('success'); }
+        if (state.mayoCount >= 3) { state.invincibleTimer = 5 + getInvBonus(); state.mayoCount = 0; if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); }
       }
       else if (o.type === 'smetana') { state.lives = Math.min(getMaxLives(), state.lives+1); o.collected = true; }
       updateHUD();
@@ -303,7 +462,7 @@ function update(dt) {
     if (Math.abs(h.x - p.x) < 40 && Math.abs(h.y - (state.groundY - p.height)) < 50) {
       state.hearts.splice(i, 1);
       state.slipTimer = 2.0;
-      if(tg) tg.HapticFeedback.impactOccurred('heavy');
+      if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
     }
   }
 
@@ -319,7 +478,7 @@ function update(dt) {
 function takeDamage() {
   state.lives--;
   state.player.stumbleTimer = 0.5;
-  if (tg) tg.HapticFeedback.impactOccurred('heavy');
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
   if (state.lives <= 0) endGame('hp');
 }
 
@@ -350,201 +509,4 @@ function render() {
     } else if (o.type === 'puddle') {
         ctx.fillStyle = '#6bb9f0'; ctx.beginPath(); ctx.ellipse(o.x+15, state.groundY-5, 25, 8, 0, 0, Math.PI*2); ctx.fill();
     } else if (o.type === 'tomato') {
-        if(imgTomato.complete) ctx.drawImage(imgTomato, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🍅', o.x+15, y+15); }
-    } else if (o.type === 'shrimp') {
-        if(imgShrimp.complete) ctx.drawImage(imgShrimp, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🦐', o.x+15, y+15); }
-    } else if (o.type === 'mayo') {
-        if(imgMayo.complete) ctx.drawImage(imgMayo, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🥫', o.x+15, y+15); }
-    } else if (o.type === 'smetana') {
-        if(imgSmetana.complete) ctx.drawImage(imgSmetana, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🥛', o.x+15, y+15); }
-    }
-  });
-
-  state.flyingTomatoes.forEach(t => {
-    ctx.save(); ctx.translate(t.x + t.w/2, t.y + t.h/2); ctx.rotate(t.rot);
-    if (t.isBird) { ctx.font = '40px serif'; ctx.fillText('🕊️', 0, 0); }
-    else if (t.isMelon) { ctx.font = '50px serif'; ctx.fillText('🍉', 0, 0); }
-    else {
-        if(imgTomato.complete) ctx.drawImage(imgTomato, -t.w/2, -t.h/2, t.w, t.h);
-        else { ctx.font = '34px serif'; ctx.fillText('🍅', 0, 0); }
-    }
-    ctx.restore();
-  });
-
-  state.hearts.forEach(h => { ctx.font = '30px serif'; ctx.fillText('💖', h.x, h.y); });
-  state.poops.forEach(p => { ctx.font = '20px serif'; ctx.fillText('💩', p.x, p.y); });
-
-  if (state.running) {
-    if (state.currentLevel >= 2) {
-        if(imgKsyusha.complete) ctx.drawImage(imgKsyusha, W-70, state.groundY-120, 60, 60);
-        else { ctx.font = '50px serif'; ctx.fillText('👧', W-40, state.groundY-90); }
-    }
-    if (state.veronica) {
-        ctx.font = '20px serif'; ctx.fillText('💕', state.veronica.x, state.groundY - 80);
-        if(imgVeronika.complete) ctx.drawImage(imgVeronika, state.veronica.x-30, state.groundY-70, 60, 60);
-        else { ctx.font = '40px serif'; ctx.fillText('👩', state.veronica.x, state.groundY-30); }
-    }
-    const p = state.player;
-    const py = state.groundY - (p.isDucking ? 25 : p.height) + p.y;
-    ctx.save();
-    if (p.isDucking) ctx.scale(1.3, 0.6);
-    else if (!p.onGround) ctx.rotate(0.2);
-    else if (p.stumbleTimer > 0) ctx.rotate(Math.sin(p.stumbleTimer * 40) * 0.3);
-    if (state.invincibleTimer > 0) ctx.scale(1.3, 1.3);
-    ctx.translate(p.x + p.width/2, py + p.height/2);
-    const catImg = state.cat === 'baksik' ? imgBaksik : imgGrey;
-    if (catImg.complete) ctx.drawImage(catImg, -30, -30, 60, 60);
-    else { ctx.font = '40px serif'; ctx.fillText('🐱', 0, 0); }
-    if (!p.onGround) { ctx.font = '20px serif'; ctx.fillText('😝', 15, -15); }
-    if (p.stumbleTimer > 0) { ctx.font = '20px serif'; ctx.fillText('😵', 15, -15); }
-    ctx.restore();
-  }
-
-  if (state.levelUpTimer > 0) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, H * 0.4 - 40, W, 80);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#4cd137'; ctx.font = 'bold 20px sans-serif';
-    ctx.fillText(`УРОВЕНЬ ${state.currentLevel + 1}`, W / 2, H * 0.4 - 10);
-    ctx.fillStyle = '#ffd166'; ctx.font = 'bold 24px sans-serif';
-    ctx.fillText(`«${LEVELS[state.currentLevel].name}»`, W / 2, H * 0.4 + 20);
-  }
-}
-
-function loop(time) {
-  if (!state.lastTime) state.lastTime = time;
-  const dt = Math.min(0.05, (time - state.lastTime) / 1000);
-  state.lastTime = time;
-  if (state.running) update(dt);
-  render();
-  requestAnimationFrame(loop);
-}
-
-function jump() {
-  const p = state.player;
-  if (!p || !state.running || p.isDucking || state.slipTimer > 0) return;
-  const maxJumps = state.cat === 'baksik' ? 2 : 1;
-  if (p.jumpCount < maxJumps) {
-    p.vy = -p.cfg.jump * getJumpMult();
-    p.jumpCount++;
-    p.onGround = false;
-    if (tg) tg.HapticFeedback.impactOccurred('light');
-  }
-}
-
-document.getElementById('jump-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); jump(); });
-const duckBtn = document.getElementById('duck-btn');
-duckBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); if(state.player) state.player.isDucking = true; });
-duckBtn.addEventListener('pointerup', (e) => { if(state.player) state.player.isDucking = false; });
-duckBtn.addEventListener('pointerleave', (e) => { if(state.player) state.player.isDucking = false; });
-
-window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' || e.code === 'ArrowUp') jump();
-  if (e.code === 'ArrowDown') { if(state.player) state.player.isDucking = true; }
-});
-window.addEventListener('keyup', (e) => {
-  if (e.code === 'ArrowDown') { if(state.player) state.player.isDucking = false; }
-});
-
-function startGame(catKey) {
-  state.cat = catKey;
-  state.player = createPlayer(catKey);
-  state.groundObjects = []; state.flyingTomatoes = []; state.hearts = []; state.poops = [];
-  state.score = 0;
-  state.lives = getMaxLives();
-  state.combo = 1; state.mayoCount = 0;
-  state.invincibleTimer = 0; state.slipTimer = 0;
-  state.worldSpeed = 320;
-  state.spawnTimer = 1; state.spawnInterval = 0.8; state.flyTimer = 3; state.heartTimer = 4;
-  state.distance = 0; state.currentLevel = getStartLevel(); state.hugProgress = 0;
-  state.shrimpEarned = 0;
-  state.running = true; state.lastTime = 0;
-
-  document.getElementById('menu').style.display = 'none';
-  document.getElementById('gameover').style.display = 'none';
-  document.getElementById('hud').style.display = 'flex';
-  document.getElementById('jump-btn').style.display = 'flex';
-  document.getElementById('duck-btn').style.display = 'flex';
-  document.getElementById('music-btn').style.display = 'block';
-
-  document.getElementById('level-info').textContent = `Ур. ${state.currentLevel + 1}: ${LEVELS[state.currentLevel].name}`;
-  updateHUD();
-  startMusic();
-}
-
-function endGame(reason) {
-  state.running = false;
-  document.getElementById('gameover-title').textContent = reason === 'hug' ? 'Вероника заобнимала! 💕' : 'Кот устал от помидоров!';
-  document.getElementById('final-score').textContent = state.score;
-  document.getElementById('earned-shrimp').textContent = state.shrimpEarned;
-
-  // Начисляем креветки в банк
-  progress.shrimpBank += state.shrimpEarned;
-
-  if (state.score > progress.bestScore) {
-    progress.bestScore = state.score;
-    if (tg && tg.CloudStorage) tg.CloudStorage.setItem('bestScore', progress.bestScore.toString());
-  }
-  document.getElementById('best-score').textContent = progress.bestScore;
-  saveProgress();
-
-  document.getElementById('gameover').style.display = 'flex';
-  document.getElementById('jump-btn').style.display = 'none';
-  document.getElementById('duck-btn').style.display = 'none';
-  document.getElementById('music-btn').style.display = 'none';
-  if (tg) tg.HapticFeedback.notificationOccurred('error');
-}
-
-document.getElementById('share-btn').addEventListener('click', () => {
-    const text = `Я пробежал по Твери и набрал ${state.score} очков! А ты сможешь?`;
-    if (tg) tg.switchInlineQuery(text, ['users', 'groups']);
-    else alert('Поделиться можно только в Telegram!');
-});
-
-// --- Кнопки магазина ---
-document.getElementById('shop-btn').addEventListener('click', openShop);
-document.getElementById('shop-open-btn').addEventListener('click', openShop);
-document.getElementById('shop-close').addEventListener('click', closeShop);
-
-let selectedCat = null;
-document.querySelectorAll('.cat-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedCat = btn.dataset.cat;
-    document.getElementById('start-btn').style.display = 'block';
-  });
-});
-document.getElementById('start-btn').addEventListener('click', () => { if (selectedCat) startGame(selectedCat); });
-document.getElementById('restart-btn').addEventListener('click', () => {
-  document.getElementById('gameover').style.display = 'none';
-  document.getElementById('menu').style.display = 'flex';
-  selectedCat = null;
-  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('start-btn').style.display = 'none';
-  saveProgress();
-});
-
-function init() {
-  resize();
-  state.groundY = H * 0.78;
-  // Загружаем прогресс и запускаем цикл
-  loadProgress(() => {
-    document.getElementById('best-score').textContent = progress.bestScore;
-    // Показываем баланс в меню (если есть кнопка)
-    const shopBtn = document.getElementById('shop-btn');
-    if (shopBtn) shopBtn.textContent = `🛒 Магазин (🦐 ${progress.shrimpBank})`;
-    renderShop();
-    requestAnimationFrame(loop);
-  });
-}
-init();
-window.addEventListener('resize', () => { resize(); state.groundY = H * 0.78; });
-
-// Обновляем баланс на кнопке магазина после game over
-const originalEndGame = endGame;
-endGame = function(reason) {
-  originalEndGame(reason);
-  const shopBtn = document.getElementById('shop-btn');
-  if (shopBtn) shopBtn.textContent = `🛒 Магазин (🦐 ${progress.shrimpBank})`;
-};
-</script>
+        if(imgTomato.complete) ctx.drawImage(imgTomato, o.x, y, o.w, o.h); else { ctx.font =
