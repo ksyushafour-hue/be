@@ -49,20 +49,23 @@
     font-size: 16px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.6);
     pointer-events: none;
   }
-  #hud .row { display: flex; justify-content: space-between; }
+  #hud .row { display: flex; justify-content: space-between; align-items: center; }
   #hud .score { color: #ffd166; }
+  
+  #level-info { text-align: center; font-size: 13px; color: #4cd137; text-transform: uppercase; max-width: 50%; line-height: 1.2;}
 
   #hug-bar-wrap {
     width: 100%; height: 14px; border-radius: 999px;
     background: rgba(255,255,255,0.15); overflow: hidden;
     border: 1px solid rgba(255,255,255,0.2);
+    margin-top: 4px;
   }
   #hug-bar {
     height: 100%; width: 0%;
     background: linear-gradient(90deg, #ff6b6b, #ff9f43);
     transition: width 0.15s linear;
   }
-  #hug-label { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+  #hug-label { font-size: 11px; opacity: 0.85; margin-top: 2px; text-align: center; }
 
   #jump-btn {
     position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
@@ -96,6 +99,7 @@
   <div id="hud">
     <div class="row">
       <div>❤️ <span id="lives">3</span></div>
+      <div id="level-info">Ур. 1: Дело — потеха</div>
       <div class="score">🦐 <span id="score">0</span></div>
     </div>
     <div>
@@ -139,11 +143,10 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 let W = 0, H = 0;
 
-// Загрузка ВСЕХ картинок
+// Загрузка картинок
 const imgBaksik = new Image(); imgBaksik.src = 'baksik.png';
 const imgGrey = new Image(); imgGrey.src = 'grey.png';
 const imgBg = new Image(); imgBg.src = 'bg.png';
-// Новые картинки
 const imgTomato = new Image(); imgTomato.src = 'tomato.png';
 const imgShrimp = new Image(); imgShrimp.src = 'shrimp.png';
 const imgMayo = new Image(); imgMayo.src = 'mayo.png';
@@ -156,6 +159,15 @@ function resize() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 window.addEventListener('resize', resize);
+
+// --- УРОВНИ С ИСПОЛЬЗОВАНИЕМ СЛОВ ---
+const LEVELS = [
+  { name: 'Дело — потеха', dist: 0 },
+  { name: 'Портки дымятся', dist: 600 },
+  { name: 'Нос в помидорах', dist: 1500 },
+  { name: 'Портки на носу', dist: 3000 },
+  { name: 'Потеха закончилась', dist: 5000 }
+];
 
 const state = {
   running: false,
@@ -176,6 +188,10 @@ const state = {
   hugProgress: 0,
   hugRate: 0.06,
   hugRecover: 0.12,
+  
+  distance: 0,       
+  currentLevel: 0,   
+  levelUpTimer: 0,   
 };
 
 const CAT_CONFIG = {
@@ -200,9 +216,13 @@ function createPlayer(catKey) {
 
 function spawnObject() {
   const r = Math.random();
-  const type = r < 0.55 ? 'tomato' : (r < 0.8 ? 'shrimp' : 'mayo');
+  const tomatoChance = state.currentLevel >= 2 ? 0.7 : 0.55;
+  
+  const type = r < tomatoChance ? 'tomato' : (r < 0.85 ? 'shrimp' : 'mayo');
   const size = type === 'tomato' ? 34 : 30;
-  const count = type === 'tomato' && Math.random() < 0.35 ? 2 + Math.floor(Math.random() * 2) : 1;
+  
+  const multiChance = state.currentLevel >= 2 ? 0.6 : 0.35;
+  const count = type === 'tomato' && Math.random() < multiChance ? 2 + Math.floor(Math.random() * 2) : 1;
 
   for (let i = 0; i < count; i++) {
     state.objects.push({
@@ -237,12 +257,27 @@ function update(dt) {
 
   const speed = state.worldSpeed * p.cfg.speedMult;
   state.scrollOffset += speed * dt;
+  state.distance += speed * dt;
+
+  if (state.currentLevel < LEVELS.length - 1) {
+    const nextLevel = LEVELS[state.currentLevel + 1];
+    if (state.distance >= nextLevel.dist) {
+      state.currentLevel++;
+      state.levelUpTimer = 2.5; 
+      state.worldSpeed += 60;   
+      state.spawnInterval = Math.max(0.3, state.spawnInterval - 0.1); 
+      
+      document.getElementById('level-info').textContent = `Ур. ${state.currentLevel + 1}: ${LEVELS[state.currentLevel].name}`;
+      if (tg) tg.HapticFeedback.notificationOccurred('success');
+    }
+  }
+
+  if (state.levelUpTimer > 0) state.levelUpTimer -= dt;
 
   state.spawnTimer -= dt;
   if (state.spawnTimer <= 0) {
     spawnObject();
     state.spawnTimer = state.spawnInterval * (0.65 + Math.random() * 0.7);
-    state.worldSpeed = Math.min(560, state.worldSpeed + 4 * dt);
   }
 
   if (state.cat === 'grey') {
@@ -322,7 +357,6 @@ function hitTest(p, o) {
 function render() {
   ctx.clearRect(0, 0, W, H);
 
-  // Фон
   if (imgBg.complete && imgBg.naturalHeight !== 0) {
     const imgRatio = imgBg.width / imgBg.height;
     const screenRatio = W / H;
@@ -345,7 +379,6 @@ function render() {
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Земля
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, state.groundY, W, H - state.groundY);
   ctx.strokeStyle = '#ffd16644';
@@ -365,7 +398,6 @@ function render() {
     ctx.stroke();
   }
 
-  // Какашки
   state.poops.forEach(poop => {
     ctx.save();
     ctx.translate(poop.x, poop.y);
@@ -377,7 +409,6 @@ function render() {
     ctx.restore();
   });
 
-  // ОБЪЕКТЫ (Помидоры, Креветки, Майонез)
   state.objects.forEach(o => {
     if (o.collected) return;
     const y = state.groundY - o.h;
@@ -413,7 +444,6 @@ function render() {
     }
   });
 
-  // Вероника
   if (state.veronica && state.running) {
     const v = state.veronica;
     const heartBob = Math.sin(performance.now() / 250) * 4;
@@ -431,7 +461,6 @@ function render() {
 
   if (!state.running) return;
 
-  // Кот
   const p = state.player;
   if (p) {
     const px = p.x;
@@ -471,6 +500,22 @@ function render() {
     }
     
     ctx.restore();
+  }
+
+  if (state.levelUpTimer > 0) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(0, H * 0.4 - 40, W, 80);
+    
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    ctx.fillStyle = '#4cd137';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(`УРОВЕНЬ ${state.currentLevel + 1}`, W / 2, H * 0.4 - 10);
+    
+    ctx.fillStyle = '#ffd166';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(`«${LEVELS[state.currentLevel].name}»`, W / 2, H * 0.4 + 20);
   }
 }
 
@@ -524,9 +569,15 @@ function startGame(catKey) {
   state.poops = [];
   state.score = 0;
   state.lives = 3;
+  
   state.worldSpeed = 320;
   state.spawnTimer = 0.8;
   state.spawnInterval = 0.75;
+  state.distance = 0;
+  state.currentLevel = 0;
+  state.levelUpTimer = 0;
+  document.getElementById('level-info').textContent = `Ур. 1: Дело — потеха`;
+  
   state.poopTimer = 1; 
   state.scrollOffset = 0;
   state.hugProgress = 0;
