@@ -119,7 +119,7 @@
 
   <div id="menu">
     <h1>Баксик и Серый</h1>
-    <p>Уворачивайся от бабушек, пригибайся от голубей и не дай Веронике догнать тебя!</p>
+    <p>Уворачивайся от помидоров и бабушек, пригибайся от голубей, не дай Веронике заобнимать тебя — и не вляпайся носом в портки!</p>
     <div class="cats">
       <button class="cat-btn" data-cat="baksik">
         <img src="baksik.png" class="cat-img" alt="Баксик">
@@ -215,9 +215,7 @@ UPGRADES.forEach(u => progress.upgrades[u.id] = 0);
 
 function saveProgress() {
   const data = JSON.stringify(progress);
-  if (tg && tg.CloudStorage) {
-    try { tg.CloudStorage.setItem('progress', data); } catch(e){}
-  }
+  if (tg && tg.CloudStorage) { try { tg.CloudStorage.setItem('progress', data); } catch(e){} }
   try { localStorage.setItem('catProgress', data); } catch(e){}
 }
 
@@ -509,4 +507,189 @@ function render() {
     } else if (o.type === 'puddle') {
         ctx.fillStyle = '#6bb9f0'; ctx.beginPath(); ctx.ellipse(o.x+15, state.groundY-5, 25, 8, 0, 0, Math.PI*2); ctx.fill();
     } else if (o.type === 'tomato') {
-        if(imgTomato.complete) ctx.drawImage(imgTomato, o.x, y, o.w, o.h); else { ctx.font =
+        if(imgTomato.complete) ctx.drawImage(imgTomato, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🍅', o.x+15, y+15); }
+    } else if (o.type === 'shrimp') {
+        if(imgShrimp.complete) ctx.drawImage(imgShrimp, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🦐', o.x+15, y+15); }
+    } else if (o.type === 'mayo') {
+        if(imgMayo.complete) ctx.drawImage(imgMayo, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🥫', o.x+15, y+15); }
+    } else if (o.type === 'smetana') {
+        if(imgSmetana.complete) ctx.drawImage(imgSmetana, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🥛', o.x+15, y+15); }
+    }
+  });
+
+  state.flyingTomatoes.forEach(t => {
+    ctx.save(); ctx.translate(t.x + t.w/2, t.y + t.h/2); ctx.rotate(t.rot);
+    if (t.isBird) { ctx.font = '40px serif'; ctx.fillText('🕊️', 0, 0); }
+    else if (t.isMelon) { ctx.font = '50px serif'; ctx.fillText('🍉', 0, 0); }
+    else {
+        if(imgTomato.complete) ctx.drawImage(imgTomato, -t.w/2, -t.h/2, t.w, t.h);
+        else { ctx.font = '34px serif'; ctx.fillText('🍅', 0, 0); }
+    }
+    ctx.restore();
+  });
+
+  state.hearts.forEach(h => { ctx.font = '30px serif'; ctx.fillText('💖', h.x, h.y); });
+  state.poops.forEach(p => { ctx.font = '20px serif'; ctx.fillText('💩', p.x, p.y); });
+
+  if (state.running) {
+    if (state.currentLevel >= 2) {
+        if(imgKsyusha.complete) ctx.drawImage(imgKsyusha, W-70, state.groundY-120, 60, 60);
+        else { ctx.font = '50px serif'; ctx.fillText('👧', W-40, state.groundY-90); }
+    }
+    if (state.veronica) {
+        ctx.font = '20px serif'; ctx.fillText('💕', state.veronica.x, state.groundY - 80);
+        if(imgVeronika.complete) ctx.drawImage(imgVeronika, state.veronica.x-30, state.groundY-70, 60, 60);
+        else { ctx.font = '40px serif'; ctx.fillText('👩', state.veronica.x, state.groundY-30); }
+    }
+    const p = state.player;
+    const py = state.groundY - (p.isDucking ? 25 : p.height) + p.y;
+    ctx.save();
+    if (p.isDucking) ctx.scale(1.3, 0.6);
+    else if (!p.onGround) ctx.rotate(0.2);
+    else if (p.stumbleTimer > 0) ctx.rotate(Math.sin(p.stumbleTimer * 40) * 0.3);
+    if (state.invincibleTimer > 0) ctx.scale(1.3, 1.3);
+    ctx.translate(p.x + p.width/2, py + p.height/2);
+    const catImg = state.cat === 'baksik' ? imgBaksik : imgGrey;
+    if (catImg.complete) ctx.drawImage(catImg, -30, -30, 60, 60);
+    else { ctx.font = '40px serif'; ctx.fillText('🐱', 0, 0); }
+    if (!p.onGround) { ctx.font = '20px serif'; ctx.fillText('😝', 15, -15); }
+    if (p.stumbleTimer > 0) { ctx.font = '20px serif'; ctx.fillText('😵', 15, -15); }
+    ctx.restore();
+  }
+
+  if (state.levelUpTimer > 0) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, H * 0.4 - 40, W, 80);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#4cd137'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(`УРОВЕНЬ ${state.currentLevel + 1}`, W / 2, H * 0.4 - 10);
+    ctx.fillStyle = '#ffd166'; ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(`«${LEVELS[state.currentLevel].name}»`, W / 2, H * 0.4 + 20);
+  }
+}
+
+function loop(time) {
+  if (!state.lastTime) state.lastTime = time;
+  const dt = Math.min(0.05, (time - state.lastTime) / 1000);
+  state.lastTime = time;
+  if (state.running) update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+function jump() {
+  const p = state.player;
+  if (!p || !state.running || p.isDucking || state.slipTimer > 0) return;
+  const maxJumps = state.cat === 'baksik' ? 2 : 1;
+  if (p.jumpCount < maxJumps) {
+    p.vy = -p.cfg.jump * getJumpMult();
+    p.jumpCount++;
+    p.onGround = false;
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  }
+}
+
+document.getElementById('jump-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); jump(); });
+const duckBtn = document.getElementById('duck-btn');
+duckBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); if(state.player) state.player.isDucking = true; });
+duckBtn.addEventListener('pointerup', (e) => { if(state.player) state.player.isDucking = false; });
+duckBtn.addEventListener('pointerleave', (e) => { if(state.player) state.player.isDucking = false; });
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') jump();
+  if (e.code === 'ArrowDown') { if(state.player) state.player.isDucking = true; }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'ArrowDown') { if(state.player) state.player.isDucking = false; }
+});
+
+function startGame(catKey) {
+  state.cat = catKey;
+  state.player = createPlayer(catKey);
+  state.groundObjects = []; state.flyingTomatoes = []; state.hearts = []; state.poops = [];
+  state.score = 0;
+  state.lives = getMaxLives();
+  state.combo = 1; state.mayoCount = 0;
+  state.invincibleTimer = 0; state.slipTimer = 0;
+  state.worldSpeed = 320;
+  state.spawnTimer = 1; state.spawnInterval = 0.8; state.flyTimer = 3; state.heartTimer = 4;
+  state.distance = 0; state.currentLevel = getStartLevel(); state.hugProgress = 0;
+  state.shrimpEarned = 0;
+  state.running = true; state.lastTime = 0;
+
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('gameover').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('jump-btn').style.display = 'flex';
+  document.getElementById('duck-btn').style.display = 'flex';
+  document.getElementById('music-btn').style.display = 'block';
+
+  document.getElementById('level-info').textContent = `Ур. ${state.currentLevel + 1}: ${LEVELS[state.currentLevel].name}`;
+  updateHUD();
+  startMusic();
+}
+
+function endGame(reason) {
+  state.running = false;
+  document.getElementById('gameover-title').textContent = reason === 'hug' ? 'Вероника заобнимала! 💕' : 'Кот устал от помидоров!';
+  document.getElementById('final-score').textContent = state.score;
+  document.getElementById('earned-shrimp').textContent = state.shrimpEarned;
+  progress.shrimpBank += state.shrimpEarned;
+  if (state.score > progress.bestScore) progress.bestScore = state.score;
+  document.getElementById('best-score').textContent = progress.bestScore;
+  saveProgress();
+
+  const shopBtn = document.getElementById('shop-btn');
+  if (shopBtn) shopBtn.textContent = `🛒 Магазин (🦐 ${progress.shrimpBank})`;
+
+  document.getElementById('gameover').style.display = 'flex';
+  document.getElementById('jump-btn').style.display = 'none';
+  document.getElementById('duck-btn').style.display = 'none';
+  document.getElementById('music-btn').style.display = 'none';
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+}
+
+document.getElementById('share-btn').addEventListener('click', () => {
+    const text = `Я пробежал по Твери и набрал ${state.score} очков! А ты сможешь?`;
+    if (tg) tg.switchInlineQuery(text, ['users', 'groups']);
+    else alert('Поделиться можно только в Telegram!');
+});
+
+document.getElementById('shop-btn').addEventListener('click', openShop);
+document.getElementById('shop-open-btn').addEventListener('click', openShop);
+document.getElementById('shop-close').addEventListener('click', closeShop);
+
+let selectedCat = null;
+document.querySelectorAll('.cat-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedCat = btn.dataset.cat;
+    document.getElementById('start-btn').style.display = 'block';
+  });
+});
+document.getElementById('start-btn').addEventListener('click', () => { if (selectedCat) startGame(selectedCat); });
+document.getElementById('restart-btn').addEventListener('click', () => {
+  document.getElementById('gameover').style.display = 'none';
+  document.getElementById('menu').style.display = 'flex';
+  selectedCat = null;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('start-btn').style.display = 'none';
+  saveProgress();
+});
+
+function init() {
+  resize();
+  state.groundY = H * 0.78;
+  loadProgress(() => {
+    document.getElementById('best-score').textContent = progress.bestScore;
+    const shopBtn = document.getElementById('shop-btn');
+    if (shopBtn) shopBtn.textContent = `🛒 Магазин (🦐 ${progress.shrimpBank})`;
+    renderShop();
+    requestAnimationFrame(loop);
+  });
+}
+init();
+window.addEventListener('resize', () => { resize(); state.groundY = H * 0.78; });
+</script>
+</body>
+</html>
