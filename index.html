@@ -347,7 +347,7 @@
   function spawnObjects() {
     const r = Math.random();
     let type = 'tomato';
-    if (r > 0.8) type = 'smetana'; // если картинки нет, будет эмодзи
+    if (r > 0.8) type = 'smetana';
     else if (r > 0.55) type = 'mayo';
     else if (r > 0.25) type = 'shrimp';
     else type = 'tomato';
@@ -503,7 +503,6 @@
       } else if (o.type === 'mayo') {
           if(imgMayo.complete) ctx.drawImage(imgMayo, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🥫', o.x+15, y+15); }
       } else if (o.type === 'smetana') {
-          // Фолбэк на эмодзи, если картинки нет
           ctx.font = '30px serif'; ctx.fillText('🥛', o.x+15, y+15);
       }
     });
