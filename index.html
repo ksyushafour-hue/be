@@ -181,11 +181,18 @@ const imgGrandma = new Image(); imgGrandma.src = 'grandma.png';
 function resize() {
   const rect = document.getElementById('game').getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
-  W = rect.width; H = rect.height;
-  canvas.width = W * dpr; canvas.height = H * dpr;
+  W = rect.width || window.innerWidth;
+  H = rect.height || window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  state.groundY = H * 0.78;
 }
-window.addEventListener('resize', resize);
+window.addEventListener('resize', () => {
+  resize();
+});
 
 const bgMusic = document.getElementById('bg-music');
 const musicBtn = document.getElementById('music-btn');
@@ -326,7 +333,7 @@ const state = {
   score: 0, bestScore: 0, lives: 3, combo: 1, comboTimer: 0,
   mayoCount: 0, invincibleTimer: 0, slipTimer: 0,
   worldSpeed: 320, spawnTimer: 0, spawnInterval: 0.8, flyTimer: 3, heartTimer: 4,
-  lastTime: 0, groundY: 0, scrollOffset: 0,
+  lastTime: 0, groundY: 300, scrollOffset: 0,
   veronica: null, hugProgress: 0, distance: 0, currentLevel: 0, levelUpTimer: 0,
   shrimpEarned: 0,
 };
@@ -603,6 +610,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 function startGame(catKey) {
+  resize();
   state.cat = catKey;
   state.player = createPlayer(catKey);
   state.groundObjects = []; state.flyingTomatoes = []; state.hearts = []; state.poops = [];
@@ -679,17 +687,18 @@ document.getElementById('restart-btn').addEventListener('click', () => {
 
 function init() {
   resize();
-  state.groundY = H * 0.78;
-  loadProgress(() => {
-    document.getElementById('best-score').textContent = progress.bestScore;
-    const shopBtn = document.getElementById('shop-btn');
-    if (shopBtn) shopBtn.textContent = `🛒 Магазин (🦐 ${progress.shrimpBank})`;
-    renderShop();
-    requestAnimationFrame(loop);
+  requestAnimationFrame(() => {
+    resize();
+    loadProgress(() => {
+      document.getElementById('best-score').textContent = progress.bestScore;
+      const shopBtn = document.getElementById('shop-btn');
+      if (shopBtn) shopBtn.textContent = `🛒 Магазин (🦐 ${progress.shrimpBank})`;
+      renderShop();
+      requestAnimationFrame(loop);
+    });
   });
 }
 init();
-window.addEventListener('resize', () => { resize(); state.groundY = H * 0.78; });
 </script>
 </body>
 </html>
