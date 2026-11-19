@@ -6,7 +6,7 @@
 <title>Баксик и Серый: Тверь</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
   html, body { height: 100%; overflow: hidden; background: #1a1a2e; }
   body {
     font-family: system-ui, -apple-system, sans-serif;
@@ -35,14 +35,13 @@
   }
   .cat-btn:active { transform: scale(0.95); }
   .cat-btn.selected { border-color: #ffd166; background: #4a4a6a; }
-  .cat-emoji { font-size: 48px; }
+  .cat-img { width: 60px; height: 60px; object-fit: contain; }
   .cat-desc { font-size: 11px; opacity: 0.75; }
   #start-btn {
     padding: 16px 40px; font-size: 20px; border-radius: 999px; border: none;
     background: #ffd166; color: #1a1a2e; font-weight: bold; cursor: pointer;
     display: none;
   }
-  #start-btn:active { transform: scale(0.96); }
 
   #hud {
     position: absolute; top: 0; left: 0; right: 0; z-index: 5;
@@ -53,7 +52,6 @@
   #hud .row { display: flex; justify-content: space-between; }
   #hud .score { color: #ffd166; }
 
-  /* Шкала обнимашек */
   #hug-bar-wrap {
     width: 100%; height: 14px; border-radius: 999px;
     background: rgba(255,255,255,0.15); overflow: hidden;
@@ -65,6 +63,18 @@
     transition: width 0.15s linear;
   }
   #hug-label { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+  #jump-btn {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    z-index: 5; width: 140px; height: 140px; border-radius: 50%;
+    background: rgba(255, 209, 102, 0.2); border: 4px solid #ffd166;
+    color: #ffd166; font-size: 24px; font-weight: bold; cursor: pointer;
+    display: none; align-items: center; justify-content: center;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    touch-action: none;
+  }
+  #jump-btn:active { background: rgba(255, 209, 102, 0.5); transform: translateX(-50%) scale(0.95); }
 
   #gameover {
     position: absolute; inset: 0; z-index: 10; display: none;
@@ -96,21 +106,23 @@
 
   <div id="menu">
     <h1>Баксик и Серый</h1>
-    <p>Вероника хочет заобнимать котов! Они убегают по Твери, а на земле кто-то рассыпал помидоры — наступать нельзя. Собирай креветки и майонез, не дай Веронике догнать!</p>
+    <p>Вероника хочет заобнимать котов! Они убегают по Твери. Собирай креветки и майонез, не наступай на помидоры!</p>
     <div class="cats">
       <button class="cat-btn" data-cat="baksik">
-        <span class="cat-emoji">🐱</span>
+        <img src="baksik.png" class="cat-img" alt="Баксик">
         <span>Баксик</span>
         <span class="cat-desc">ловкий</span>
       </button>
       <button class="cat-btn" data-cat="grey">
-        <span class="cat-emoji">🐈‍⬛</span>
+        <img src="grey.png" class="cat-img" alt="Серый">
         <span>Серый</span>
-        <span class="cat-desc">быстрый</span>
+        <span class="cat-desc">какает на бегу</span>
       </button>
     </div>
     <button id="start-btn">Играть</button>
   </div>
+
+  <button id="jump-btn">ПРЫЖОК</button>
 
   <div id="gameover">
     <h2 id="gameover-title">Вероника догнала!</h2>
@@ -120,14 +132,18 @@
 </div>
 
 <script>
-// ---------- Telegram ----------
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.ready(); }
 
-// ---------- Canvas ----------
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 let W = 0, H = 0;
+
+// Загрузка картинок котов
+const imgBaksik = new Image();
+imgBaksik.src = 'baksik.png';
+const imgGrey = new Image();
+imgGrey.src = 'grey.png';
 
 function resize() {
   const rect = document.getElementById('game').getBoundingClientRect();
@@ -138,50 +154,47 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-// ---------- Состояние ----------
 const state = {
   running: false,
   cat: null,
   player: null,
   objects: [],
+  poops: [],
   score: 0,
   lives: 3,
   worldSpeed: 320,
   spawnTimer: 0,
   spawnInterval: 0.75,
+  poopTimer: 0,
   lastTime: 0,
   groundY: 0,
   scrollOffset: 0,
-
-  // Вероника
-  veronica: null,       // { x, y, hugProgress (0..1) }
-  hugProgress: 0,       // 0 = далеко, 1 = догнала
-  hugRate: 0.06,        // базовое приближение в секунду
-  hugRecover: 0.12,     // отставание при чистом беге в секунду
+  veronica: null,
+  hugProgress: 0,
+  hugRate: 0.06,
+  hugRecover: 0.12,
 };
 
 const CAT_CONFIG = {
-  baksik: { name: 'Баксик', emoji: '🐱', speedMult: 0.95, jump: 640, hugRate: 0.055, color: '#ffd166' },
-  grey:   { name: 'Серый',  emoji: '🐈‍⬛', speedMult: 1.15, jump: 720, hugRate: 0.065, color: '#a0a0c0' },
+  baksik: { name: 'Баксик', emoji: '🐱', speedMult: 0.95, jump: 800, hugRate: 0.055 },
+  grey:   { name: 'Серый',  emoji: '🐈‍⬛', speedMult: 1.15, jump: 800, hugRate: 0.065 },
 };
 
-// ---------- Игрок ----------
 function createPlayer(catKey) {
   const cfg = CAT_CONFIG[catKey];
   return {
     x: W * 0.35,
-    y: 0,
+    y: 0,          
     vy: 0,
     width: 46,
     height: 46,
     onGround: true,
     cfg,
     anim: 0,
-    stumbleTimer: 0,   // сколько ещё «спотыкается» после помидора
+    stumbleTimer: 0,
   };
 }
 
-// ---------- Спавн ----------
 function spawnObject() {
   const r = Math.random();
   const type = r < 0.55 ? 'tomato' : (r < 0.8 ? 'shrimp' : 'mayo');
@@ -201,23 +214,25 @@ function spawnObject() {
   }
 }
 
-// ---------- Обновление ----------
 function update(dt) {
   const p = state.player;
   if (!p) return;
 
-  // Гравитация
-  p.vy += 1800 * dt;
-  p.y += p.vy * dt;
-  if (p.y <= 0) { p.y = 0; p.vy = 0; p.onGround = true; }
+  p.vy += 2500 * dt; 
+  p.y += p.vy * dt;  
+
+  if (p.y >= 0) { 
+    p.y = 0; 
+    p.vy = 0; 
+    p.onGround = true; 
+  }
+
   p.anim += dt;
   if (p.stumbleTimer > 0) p.stumbleTimer -= dt;
 
-  // Скорость мира (кот бежит)
   const speed = state.worldSpeed * p.cfg.speedMult;
   state.scrollOffset += speed * dt;
 
-  // Спавн
   state.spawnTimer -= dt;
   if (state.spawnTimer <= 0) {
     spawnObject();
@@ -225,7 +240,19 @@ function update(dt) {
     state.worldSpeed = Math.min(560, state.worldSpeed + 4 * dt);
   }
 
-  // Объекты
+  if (state.cat === 'grey') {
+    state.poopTimer -= dt;
+    if (state.poopTimer <= 0) {
+      state.poops.push({
+        x: p.x,
+        y: state.groundY - 10,
+        size: 16,
+        rot: Math.random() * Math.PI * 2
+      });
+      state.poopTimer = 0.4 + Math.random() * 0.3;
+    }
+  }
+
   for (let i = state.objects.length - 1; i >= 0; i--) {
     const o = state.objects[i];
     o.x -= speed * dt;
@@ -235,8 +262,8 @@ function update(dt) {
       if (o.type === 'tomato') {
         o.collected = true;
         state.lives--;
-        p.stumbleTimer = 0.6;        // спотыкание
-        state.hugProgress = Math.min(1, state.hugProgress + 0.18); // Вероника приближается
+        p.stumbleTimer = 0.6;
+        state.hugProgress = Math.min(1, state.hugProgress + 0.18);
         updateHUD();
         if (tg) tg.HapticFeedback.impactOccurred('heavy');
         if (state.lives <= 0) { endGame('hp'); return; }
@@ -249,18 +276,15 @@ function update(dt) {
     }
   }
 
-  // ---------- Вероника ----------
-  // Если кот спотыкается — она приближается быстрее
-  // Если кот бежит чисто — она чуть отстаёт
-  let hugDelta;
-  if (p.stumbleTimer > 0) {
-    hugDelta = state.hugRate * 2.2 * dt;   // догоняет
-  } else {
-    hugDelta = -state.hugRecover * dt;      // отстаёт
+  for (let i = state.poops.length - 1; i >= 0; i--) {
+    const poop = state.poops[i];
+    poop.x -= speed * dt;
+    if (poop.x < -30) state.poops.splice(i, 1);
   }
+
+  let hugDelta = p.stumbleTimer > 0 ? state.hugRate * 2.2 * dt : -state.hugRecover * dt;
   state.hugProgress = Math.max(0, Math.min(1, state.hugProgress + hugDelta));
 
-  // Позиция Вероники на экране: от левого края (0.02) до кота (0.35)
   const vStart = W * 0.02;
   const vEnd = p.x - 60;
   state.veronica = {
@@ -269,43 +293,36 @@ function update(dt) {
     bob: Math.sin(performance.now() / 200) * 3,
   };
 
-  // Если догнала — конец
-  if (state.hugProgress >= 1) {
-    endGame('hug');
-  }
+  if (state.hugProgress >= 1) endGame('hug');
 }
 
-// AABB
 function hitTest(p, o) {
   const px = p.x;
-  const py = state.groundY - p.height - p.y;
+  const py = state.groundY - p.height + p.y; 
   const pw = p.width;
   const ph = p.height;
+  
   const ox = o.x;
   const oy = state.groundY - o.h;
   const ow = o.w;
   const oh = o.h;
   const pad = 6;
+  
   return (
-    px + pad < ox + ow &&
-    px + pw - pad > ox &&
-    py + pad < oy + oh &&
-    py + ph - pad > oy
+    px + pad < ox + ow && px + pw - pad > ox &&
+    py + pad < oy + oh && py + ph - pad > oy
   );
 }
 
-// ---------- Рендер ----------
 function render() {
   ctx.clearRect(0, 0, W, H);
 
-  // Небо
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, '#1a1a2e');
   sky.addColorStop(1, '#3a3a5a');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
 
-  // Дома (параллакс)
   const parallax = state.scrollOffset * 0.2;
   ctx.fillStyle = '#2a2a4a';
   const buildings = [0.05, 0.2, 0.38, 0.55, 0.72, 0.88, 1.05, 1.2];
@@ -323,7 +340,6 @@ function render() {
     ctx.fillStyle = '#2a2a4a';
   });
 
-  // Земля
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, state.groundY, W, H - state.groundY);
   ctx.strokeStyle = '#ffd16644';
@@ -333,7 +349,6 @@ function render() {
   ctx.lineTo(W, state.groundY);
   ctx.stroke();
 
-  // Разметка
   ctx.strokeStyle = '#ffffff15';
   ctx.lineWidth = 3;
   const dashOffset = (state.scrollOffset * 0.6) % 60;
@@ -344,43 +359,45 @@ function render() {
     ctx.stroke();
   }
 
-  // Объекты
+  state.poops.forEach(poop => {
+    ctx.save();
+    ctx.translate(poop.x, poop.y);
+    ctx.rotate(poop.rot);
+    ctx.font = `${poop.size}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💩', 0, 0);
+    ctx.restore();
+  });
+
   state.objects.forEach(o => {
     if (o.collected) return;
     const y = state.groundY - o.h;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     if (o.type === 'tomato') {
       ctx.font = `${o.w}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText('🍅', o.x + o.w / 2, y + o.h / 2);
     } else if (o.type === 'shrimp') {
       const bob = Math.sin(o.bob + performance.now() / 300) * 3;
       ctx.font = `${o.w}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText('🦐', o.x + o.w / 2, y + o.h / 2 + bob);
     } else {
       const bob = Math.sin(o.bob + performance.now() / 400) * 3;
       ctx.font = `${o.w}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText('🥫', o.x + o.w / 2, y + o.h / 2 + bob);
     }
   });
 
-  // Вероника (за котом)
   if (state.veronica && state.running) {
     const v = state.veronica;
-    // Сердечки над головой
     const heartBob = Math.sin(performance.now() / 250) * 4;
     ctx.font = '20px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('💕', v.x, state.groundY - 90 + heartBob);
-    // Вероника
     ctx.font = '44px serif';
     ctx.fillText('👩', v.x, state.groundY - 30 + v.bob);
-    // Подпись
     ctx.font = '10px sans-serif';
     ctx.fillStyle = '#ff9f43cc';
     ctx.fillText('Вероника', v.x, state.groundY - 70);
@@ -389,44 +406,57 @@ function render() {
 
   if (!state.running) return;
 
-  // Игрок
   const p = state.player;
   if (p) {
-    const px = p.x, py = state.groundY - p.height - p.y;
+    const px = p.x;
+    const py = state.groundY - p.height + p.y; 
 
-    // Тень
-    const shadowScale = 1 - Math.min(0.6, p.y / 300);
+    const shadowScale = 1 - Math.min(0.6, Math.abs(p.y) / 300);
     ctx.fillStyle = `rgba(0,0,0,${0.35 * shadowScale})`;
     ctx.beginPath();
     ctx.ellipse(px + p.width / 2, state.groundY - 4, p.width * 0.5 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Покачивание + спотыкание
-    let bobY = p.onGround ? Math.abs(Math.sin(p.anim * 14)) * 3 : 0;
+    let bobY = 0;
     let rot = 0;
+    if (p.onGround) {
+      bobY = Math.abs(Math.sin(p.anim * 15)) * 4;
+    } else {
+      rot = 0.2; 
+    }
+
     if (p.stumbleTimer > 0) {
       rot = Math.sin(p.stumbleTimer * 40) * 0.25;
       bobY += 4;
     }
+
     ctx.save();
     ctx.translate(px + p.width / 2, py + p.height / 2 - bobY);
     ctx.rotate(rot);
-    ctx.font = '40px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(p.cfg.emoji, 0, 0);
+    
+    // Тут рисуется картинка кота
+    const catImage = state.cat === 'baksik' ? imgBaksik : imgGrey;
+    if (catImage.complete && catImage.naturalHeight !== 0) {
+        // Рисуем картинку 60x60 по центру
+        ctx.drawImage(catImage, -30, -30, 60, 60);
+    } else {
+        // Если картинка не загрузилась, рисуем смайлик (запасной вариант)
+        ctx.font = '40px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.cfg.emoji, 0, 0);
+    }
+    
     ctx.restore();
   }
 }
 
-// ---------- HUD ----------
 function updateHUD() {
   document.getElementById('lives').textContent = Math.max(0, state.lives);
   document.getElementById('score').textContent = state.score;
   document.getElementById('hug-bar').style.width = (state.hugProgress * 100) + '%';
 }
 
-// ---------- Цикл ----------
 function loop(time) {
   if (!state.lastTime) state.lastTime = time;
   const dt = Math.min(0.05, (time - state.lastTime) / 1000);
@@ -441,32 +471,38 @@ function loop(time) {
   requestAnimationFrame(loop);
 }
 
-// ---------- Управление ----------
 function jump() {
   const p = state.player;
-  if (!p || !state.running) return;
-  if (p.onGround) {
-    p.vy = -p.cfg.jump;
-    p.onGround = false;
-    if (tg) tg.HapticFeedback.impactOccurred('light');
-  }
+  if (!p || !state.running || !p.onGround) return; 
+  
+  p.vy = -p.cfg.jump; 
+  p.onGround = false;
+  
+  if (tg) tg.HapticFeedback.impactOccurred('light');
 }
 
-canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); jump(); });
+const jumpBtn = document.getElementById('jump-btn');
+jumpBtn.addEventListener('pointerdown', (e) => { 
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    jump(); 
+});
+
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); jump(); }
 });
 
-// ---------- Старт / финиш ----------
 function startGame(catKey) {
   state.cat = catKey;
   state.player = createPlayer(catKey);
   state.objects = [];
+  state.poops = [];
   state.score = 0;
   state.lives = 3;
   state.worldSpeed = 320;
   state.spawnTimer = 0.8;
   state.spawnInterval = 0.75;
+  state.poopTimer = 1; 
   state.scrollOffset = 0;
   state.hugProgress = 0;
   state.hugRate = CAT_CONFIG[catKey].hugRate;
@@ -478,6 +514,7 @@ function startGame(catKey) {
   document.getElementById('menu').style.display = 'none';
   document.getElementById('gameover').style.display = 'none';
   document.getElementById('hud').style.display = 'flex';
+  jumpBtn.style.display = 'flex';
   updateHUD();
   if (tg) tg.HapticFeedback.impactOccurred('medium');
 }
@@ -492,10 +529,10 @@ function endGame(reason) {
   }
   document.getElementById('final-score').textContent = state.score;
   document.getElementById('gameover').style.display = 'flex';
+  jumpBtn.style.display = 'none';
   if (tg) tg.HapticFeedback.notificationOccurred('error');
 }
 
-// ---------- UI ----------
 let selectedCat = null;
 document.querySelectorAll('.cat-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -519,7 +556,6 @@ document.getElementById('restart-btn').addEventListener('click', () => {
   document.getElementById('start-btn').style.display = 'none';
 });
 
-// ---------- Инициализация ----------
 function init() {
   resize();
   state.groundY = H * 0.78;
