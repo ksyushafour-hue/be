@@ -8,36 +8,22 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
   html, body { height: 100%; overflow: hidden; background: #1a1a2e; }
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    touch-action: none;
-  }
+  body { font-family: system-ui, -apple-system, sans-serif; color: #fff; display: flex; align-items: center; justify-content: center; touch-action: none; }
   
-  #game { 
-    position: relative; width: 100vw; height: 100vh; max-width: 500px; max-height: 900px; overflow: hidden; 
-    background: url('bg.png') center/cover no-repeat;
-    background-color: #2a2a4a;
-  }
-  
+  #game { position: relative; width: 100vw; height: 100vh; max-width: 500px; max-height: 900px; overflow: hidden; background: url('bg.png') center/cover no-repeat; background-color: #2a2a4a; }
   canvas { display: block; width: 100%; height: 100%; background: transparent; }
 
   #menu {
-    position: absolute; inset: 0; z-index: 10;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 20px; padding: 20px;
-    background: rgba(26, 26, 46, 0.6);
-    text-align: center;
+    position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 15px; padding: 20px; background: rgba(26, 26, 46, 0.7); text-align: center; backdrop-filter: blur(3px);
   }
-  #menu h1 { font-size: 22px; line-height: 1.3; }
+  #menu h1 { font-size: 24px; color: #ffd166; }
   #menu p { font-size: 14px; opacity: 0.85; max-width: 330px; line-height: 1.4; }
-  .cats { display: flex; gap: 16px; }
+  .cats { display: flex; gap: 16px; margin: 10px 0; }
   .cat-btn {
     width: 120px; padding: 14px 10px; border-radius: 16px; border: 3px solid transparent;
     background: #3a3a5a; color: #fff; font-size: 16px; cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    transition: transform 0.1s, border-color 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform 0.1s;
   }
   .cat-btn:active { transform: scale(0.95); }
   .cat-btn.selected { border-color: #ffd166; background: #4a4a6a; }
@@ -45,66 +31,54 @@
   .cat-desc { font-size: 11px; opacity: 0.75; }
   #start-btn {
     padding: 16px 40px; font-size: 20px; border-radius: 999px; border: none;
-    background: #ffd166; color: #1a1a2e; font-weight: bold; cursor: pointer;
-    display: none;
+    background: #ffd166; color: #1a1a2e; font-weight: bold; cursor: pointer; display: none;
   }
 
   #hud {
-    position: absolute; top: 0; left: 0; right: 0; z-index: 5;
-    display: none; flex-direction: column; gap: 8px; padding: 12px 16px;
-    font-size: 16px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.6);
-    pointer-events: none;
+    position: absolute; top: 0; left: 0; right: 0; z-index: 5; display: none;
+    flex-direction: column; gap: 5px; padding: 12px 16px; font-size: 16px; font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8); pointer-events: none;
   }
   #hud .row { display: flex; justify-content: space-between; align-items: center; }
   #hud .score { color: #ffd166; }
-  #level-info { text-align: center; font-size: 13px; color: #4cd137; text-transform: uppercase; max-width: 50%; line-height: 1.2;}
+  #hud .combo { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); font-size: 24px; color: #ff6b6b; opacity: 0; transition: opacity 0.2s; }
+  #level-info { text-align: center; font-size: 13px; color: #4cd137; text-transform: uppercase; }
+  
+  #buffs { display: flex; gap: 10px; justify-content: center; margin-top: 5px; }
+  .buff-icon { font-size: 20px; text-shadow: 0 0 10px #fff; }
 
-  #hug-bar-wrap {
-    width: 100%; height: 14px; border-radius: 999px;
-    background: rgba(255,255,255,0.15); overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.2);
-    margin-top: 4px;
-  }
-  #hug-bar {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, #ff6b6b, #ff9f43);
-    transition: width 0.15s linear;
-  }
+  #hug-bar-wrap { width: 100%; height: 14px; border-radius: 999px; background: rgba(255,255,255,0.15); overflow: hidden; border: 1px solid rgba(255,255,255,0.2); margin-top: 4px; }
+  #hug-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ff6b6b, #ff9f43); transition: width 0.15s linear; }
   #hug-label { font-size: 11px; opacity: 0.85; margin-top: 2px; text-align: center; }
 
-  /* Кнопки управления */
   #jump-btn, #duck-btn {
-    position: absolute; bottom: 30px; z-index: 5;
-    width: 110px; height: 110px; border-radius: 50%;
-    background: rgba(255, 209, 102, 0.2); border: 4px solid #ffd166;
-    color: #ffd166; font-size: 18px; font-weight: bold; cursor: pointer;
-    display: none; align-items: center; justify-content: center;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    touch-action: none;
+    position: absolute; bottom: 30px; z-index: 5; width: 110px; height: 110px; border-radius: 50%;
+    background: rgba(255, 209, 102, 0.2); border: 4px solid #ffd166; color: #ffd166; font-size: 18px; font-weight: bold;
+    cursor: pointer; display: none; align-items: center; justify-content: center; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px); touch-action: none;
   }
   #jump-btn { right: 20px; }
   #duck-btn { left: 20px; background: rgba(107, 185, 240, 0.2); border-color: #6bb9f0; color: #6bb9f0;}
-  
-  #jump-btn:active { background: rgba(255, 209, 102, 0.5); transform: scale(0.95); }
-  #duck-btn:active { background: rgba(107, 185, 240, 0.5); transform: scale(0.95); }
+  #jump-btn:active { transform: scale(0.95); }
+  #duck-btn:active { transform: scale(0.95); }
+  #music-btn { position: absolute; top: 60px; right: 16px; z-index: 20; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display: none; }
 
   #gameover {
-    position: absolute; inset: 0; z-index: 10; display: none;
-    flex-direction: column; align-items: center; justify-content: center; gap: 16px;
-    background: rgba(26, 26, 46, 0.7); 
-    text-align: center; padding: 20px;
+    position: absolute; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 15px; background: rgba(26, 26, 46, 0.85); text-align: center; padding: 20px; backdrop-filter: blur(5px);
   }
   #gameover h2 { font-size: 26px; color: #ff6b6b; }
-  #gameover .final { font-size: 20px; }
-  #gameover button {
-    padding: 14px 32px; font-size: 18px; border-radius: 999px; border: none;
-    background: #ffd166; color: #1a1a2e; font-weight: bold; cursor: pointer;
-  }
+  #gameover .score-board { font-size: 22px; color: #ffd166; margin-bottom: 10px; }
+  #gameover .best { font-size: 16px; color: #4cd137; margin-bottom: 20px; }
+  .btn-group { display: flex; gap: 10px; flex-direction: column; width: 100%; max-width: 250px;}
+  #gameover button { padding: 14px 20px; font-size: 18px; border-radius: 999px; border: none; font-weight: bold; cursor: pointer; }
+  #restart-btn { background: #ffd166; color: #1a1a2e; }
+  #share-btn { background: #0088cc; color: #fff; }
 </style>
 </head>
 <body>
 <div id="game">
+  <audio id="bg-music" src="music.mp3" loop></audio>
   <canvas id="canvas"></canvas>
 
   <div id="hud">
@@ -113,25 +87,25 @@
       <div id="level-info">Ур. 1: Дело — потеха</div>
       <div class="score">🦐 <span id="score">0</span></div>
     </div>
-    <div>
-      <div id="hug-bar-wrap"><div id="hug-bar"></div></div>
-      <div id="hug-label">Обнимашки Вероники</div>
-    </div>
+    <div id="buffs"></div>
+    <div id="hug-bar-wrap"><div id="hug-bar"></div></div>
+    <div id="hug-label">Обнимашки Вероники</div>
+    <div class="combo" id="combo-text">x2</div>
   </div>
 
   <div id="menu">
     <h1>Баксик и Серый</h1>
-    <p>Вероника хочет заобнимать котов! Собирай еду, прыгай через помидоры и пригибайся, когда Ксюша кидает сверху!</p>
+    <p>Уворачивайся от бабушек, пригибайся от голубей и не дай Веронике догнать тебя!</p>
     <div class="cats">
       <button class="cat-btn" data-cat="baksik">
         <img src="baksik.png" class="cat-img" alt="Баксик">
         <span>Баксик</span>
-        <span class="cat-desc">ловкий</span>
+        <span class="cat-desc">Двойной прыжок</span>
       </button>
       <button class="cat-btn" data-cat="grey">
         <img src="grey.png" class="cat-img" alt="Серый">
         <span>Серый</span>
-        <span class="cat-desc">какает на бегу</span>
+        <span class="cat-desc">Какает на Веронику</span>
       </button>
     </div>
     <button id="start-btn">Играть</button>
@@ -139,11 +113,16 @@
 
   <button id="duck-btn">ВНИЗ</button>
   <button id="jump-btn">ПРЫЖОК</button>
+  <button id="music-btn">🔇</button>
 
   <div id="gameover">
     <h2 id="gameover-title">Вероника догнала!</h2>
-    <div class="final">Счёт: <span id="final-score">0</span></div>
-    <button id="restart-btn">Ещё раз</button>
+    <div class="score-board">Счёт: <span id="final-score">0</span></div>
+    <div class="best">Твой рекорд: <span id="best-score">0</span></div>
+    <div class="btn-group">
+      <button id="share-btn">Похвастаться друзьям</button>
+      <button id="restart-btn">Ещё раз</button>
+    </div>
   </div>
 </div>
 
@@ -161,8 +140,10 @@ const imgGrey = new Image(); imgGrey.src = 'grey.png';
 const imgTomato = new Image(); imgTomato.src = 'tomato.png';
 const imgShrimp = new Image(); imgShrimp.src = 'shrimp.png';
 const imgMayo = new Image(); imgMayo.src = 'mayo.png';
+const imgSmetana = new Image(); imgSmetana.src = 'smetana.png'; 
 const imgKsyusha = new Image(); imgKsyusha.src = 'ksyusha.png';
-const imgVeronika = new Image(); imgVeronika.src = 'veronika.png'; // НОВАЯ КАРТИНКА ВЕРОНИКИ
+const imgVeronika = new Image(); imgVeronika.src = 'veronika.png';
+const imgGrandma = new Image(); imgGrandma.src = 'grandma.png';
 
 function resize() {
   const rect = document.getElementById('game').getBoundingClientRect();
@@ -173,557 +154,380 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
+// --- МУЗЫКА ---
+const bgMusic = document.getElementById('bg-music');
+const musicBtn = document.getElementById('music-btn');
+let isMusicPlaying = false;
+function startMusic() {
+    bgMusic.volume = 0.3;
+    bgMusic.play().then(() => { isMusicPlaying = true; musicBtn.textContent = '🔊'; }).catch(()=>{});
+}
+musicBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (isMusicPlaying) { bgMusic.pause(); musicBtn.textContent = '🔇'; isMusicPlaying = false; } 
+    else { bgMusic.play(); musicBtn.textContent = '🔊'; isMusicPlaying = true; }
+});
+
 const LEVELS = [
-  { name: 'Дело — потеха', dist: 0 },
-  { name: 'Портки дымятся', dist: 600 },
-  { name: 'Нос в помидорах', dist: 1500 },
-  { name: 'Портки на носу', dist: 3000 },
-  { name: 'Потеха закончилась', dist: 5000 }
+  { name: 'Дело — потеха', dist: 0, tint: 'rgba(26, 26, 46, 0)' },
+  { name: 'Портки дымятся', dist: 600, tint: 'rgba(255, 120, 0, 0.15)' }, 
+  { name: 'Нос в помидорах', dist: 1500, tint: 'rgba(0, 0, 50, 0.5)' }, 
+  { name: 'Портки на носу', dist: 3000, tint: 'rgba(100, 0, 100, 0.3)' }, 
+  { name: 'Потеха закончилась', dist: 5000, tint: 'rgba(0, 0, 0, 0.6)' }
 ];
 
 const state = {
-  running: false,
-  cat: null,
-  player: null,
-  objects: [],          
-  flyingTomatoes: [],   
-  poops: [],
-  score: 0,
-  lives: 3,
-  worldSpeed: 320,
-  spawnTimer: 0,
-  spawnInterval: 0.75,
-  flyTimer: 0,          
-  poopTimer: 0,
-  lastTime: 0,
-  groundY: 0,
-  scrollOffset: 0,
-  veronica: null,
-  hugProgress: 0,
-  hugRate: 0.06,
-  hugRecover: 0.12,
-  distance: 0,       
-  currentLevel: 0,   
-  levelUpTimer: 0,   
+  running: false, cat: null, player: null,
+  groundObjects: [], flyingTomatoes: [], hearts: [], poops: [],
+  score: 0, bestScore: 0, lives: 3, combo: 1, comboTimer: 0,
+  mayoCount: 0, invincibleTimer: 0, slipTimer: 0,
+  worldSpeed: 320, spawnTimer: 0, spawnInterval: 0.8, flyTimer: 3, heartTimer: 4,
+  lastTime: 0, groundY: 0, scrollOffset: 0,
+  veronica: null, hugProgress: 0, distance: 0, currentLevel: 0, levelUpTimer: 0,
 };
 
 const CAT_CONFIG = {
-  baksik: { name: 'Баксик', emoji: '🐱', speedMult: 0.95, jump: 850, hugRate: 0.055 },
-  grey:   { name: 'Серый',  emoji: '🐈‍⬛', speedMult: 1.15, jump: 850, hugRate: 0.065 },
+  baksik: { speedMult: 0.95, jump: 850 },
+  grey:   { speedMult: 1.15, jump: 800 }
 };
+
+if (tg && tg.CloudStorage) {
+    tg.CloudStorage.getItem('bestScore', (err, val) => { if(val) state.bestScore = parseInt(val); });
+}
 
 function createPlayer(catKey) {
   const cfg = CAT_CONFIG[catKey];
-  return {
-    x: W * 0.35,
-    y: 0,          
-    vy: 0,
-    width: 46,
-    height: 46,
-    onGround: true,
-    isDucking: false, 
-    cfg,
-    anim: 0,
-    stumbleTimer: 0,
-  };
+  return { x: W * 0.3, y: 0, vy: 0, width: 46, height: 46, onGround: true, isDucking: false, jumpCount: 0, cfg, anim: 0, stumbleTimer: 0 };
 }
 
-function spawnObject() {
+function spawnObjects() {
   const r = Math.random();
-  const tomatoChance = state.currentLevel >= 2 ? 0.7 : 0.55;
+  let type = 'tomato';
   
-  const type = r < tomatoChance ? 'tomato' : (r < 0.85 ? 'shrimp' : 'mayo');
-  const size = type === 'tomato' ? 34 : 30;
-  
-  const multiChance = state.currentLevel >= 2 ? 0.6 : 0.35;
-  const count = type === 'tomato' && Math.random() < multiChance ? 2 + Math.floor(Math.random() * 2) : 1;
+  // НОВАЯ ЛОГИКА: Помидоров теперь мало!
+  if (r > 0.85) type = 'grandma';     // 15%
+  else if (r > 0.7) type = 'puddle';  // 15%
+  else if (r > 0.5) type = 'smetana'; // 20%
+  else if (r > 0.25) type = 'mayo';   // 25%
+  else if (r > 0.1) type = 'shrimp';  // 15%
+  else type = 'tomato';               // 10% (было 20+%)
 
-  for (let i = 0; i < count; i++) {
-    state.objects.push({
-      type,
-      x: W + 60 + i * (size + 30 + Math.random() * 20),
-      y: 0,
-      w: size,
-      h: size,
-      collected: false,
-      bob: Math.random() * Math.PI * 2,
-    });
-  }
+  const size = type === 'tomato' ? 34 : (type === 'grandma' ? 50 : 30);
+  
+  state.groundObjects.push({
+    type, x: W + 60, y: 0, w: size, h: size, collected: false, bob: Math.random() * 6
+  });
 }
 
 function update(dt) {
   const p = state.player;
   if (!p) return;
 
-  if (p.isDucking) {
-    p.y = 0;
-    p.vy = 0;
-    p.onGround = true;
-  } else {
+  if (state.invincibleTimer > 0) state.invincibleTimer -= dt;
+  if (state.slipTimer > 0) state.slipTimer -= dt;
+  if (state.comboTimer > 0) { state.comboTimer -= dt; } else { state.combo = 1; document.getElementById('combo-text').style.opacity = 0; }
+
+  if (p.isDucking) { p.y = 0; p.vy = 0; p.onGround = true; } 
+  else {
     p.vy += 2200 * dt; 
     p.y += p.vy * dt;  
   }
-
-  if (p.y >= 0) { 
-    p.y = 0; 
-    p.vy = 0; 
-    p.onGround = true; 
-  } else {
-    p.onGround = false;
-  }
+  if (p.y >= 0) { p.y = 0; p.vy = 0; p.onGround = true; p.jumpCount = 0; } else { p.onGround = false; }
 
   p.anim += dt;
   if (p.stumbleTimer > 0) p.stumbleTimer -= dt;
 
-  const speed = state.worldSpeed * p.cfg.speedMult;
+  const speed = state.worldSpeed * p.cfg.speedMult * (state.slipTimer > 0 ? 1.5 : 1); 
   state.scrollOffset += speed * dt;
   state.distance += speed * dt;
 
   if (state.currentLevel < LEVELS.length - 1) {
-    const nextLevel = LEVELS[state.currentLevel + 1];
-    if (state.distance >= nextLevel.dist) {
+    if (state.distance >= LEVELS[state.currentLevel + 1].dist) {
       state.currentLevel++;
       state.levelUpTimer = 2.5; 
       state.worldSpeed += 60;   
-      state.spawnInterval = Math.max(0.3, state.spawnInterval - 0.1); 
-      
+      state.spawnInterval = Math.max(0.4, state.spawnInterval - 0.1); 
       document.getElementById('level-info').textContent = `Ур. ${state.currentLevel + 1}: ${LEVELS[state.currentLevel].name}`;
       if (tg) tg.HapticFeedback.notificationOccurred('success');
     }
   }
-
   if (state.levelUpTimer > 0) state.levelUpTimer -= dt;
 
   state.spawnTimer -= dt;
-  if (state.spawnTimer <= 0) {
-    spawnObject();
-    state.spawnTimer = state.spawnInterval * (0.65 + Math.random() * 0.7);
-  }
+  if (state.spawnTimer <= 0) { spawnObjects(); state.spawnTimer = state.spawnInterval * (0.7 + Math.random() * 0.5); }
 
+  // Ксюша кидает РЕЖЕ (каждые 3.5-5 сек)
   if (state.currentLevel >= 2) {
     state.flyTimer -= dt;
     if (state.flyTimer <= 0) {
-      state.flyingTomatoes.push({
-        x: W - 30, 
-        y: state.groundY - 80, 
-        w: 34,
-        h: 34,
-        rot: 0
-      });
-      state.flyTimer = 1.5 + Math.random(); 
+      const isMelon = state.currentLevel >= 3;
+      state.flyingTomatoes.push({ x: W - 30, y: state.groundY - 80, w: isMelon ? 50 : 34, h: isMelon ? 50 : 34, rot: 0, isMelon });
+      state.flyTimer = 3.5 + Math.random() * 2; 
     }
+  }
+
+  // Вероника кидает сердечки РЕЖЕ
+  if (state.hugProgress > 0.8) {
+    state.heartTimer -= dt;
+    if (state.heartTimer <= 0) {
+      state.hearts.push({ x: W * 0.1, y: state.groundY - 50, vx: 400 + Math.random()*200, vy: -200 });
+      state.heartTimer = 3.5 + Math.random() * 2;
+    }
+  }
+
+  if (state.cat === 'grey' && p.onGround && Math.random() < 0.1) {
+    state.poops.push({ x: p.x, y: state.groundY - 10, size: 16, rot: Math.random() * 6 });
+    state.hugProgress = Math.max(0, state.hugProgress - 0.02); 
+  }
+
+  for (let i = state.groundObjects.length - 1; i >= 0; i--) {
+    const o = state.groundObjects[i];
+    o.x -= speed * dt;
+    if (o.x + o.w < -50) { state.groundObjects.splice(i, 1); continue; }
+
+    const catH = p.isDucking ? 25 : p.height;
+    const py = state.groundY - catH + p.y;
+    if (!o.collected && p.x + 6 < o.x + o.w && p.x + p.width - 6 > o.x && py + 6 < state.groundY && py + catH - 6 > state.groundY - o.h) {
+      
+      if (state.invincibleTimer > 0 && o.type !== 'smetana' && o.type !== 'shrimp') { o.collected = true; continue; }
+
+      if (o.type === 'tomato') { o.collected = true; takeDamage(); state.combo = 1; }
+      else if (o.type === 'grandma') { o.collected = true; takeDamage(); p.x -= 30; state.combo = 1; }
+      else if (o.type === 'puddle') { state.slipTimer = 1.0; o.collected = true; }
+      else if (o.type === 'shrimp') { state.score += 1 * state.combo; o.collected = true; }
+      else if (o.type === 'mayo') { 
+        state.mayoCount++; state.score += 2; o.collected = true; 
+        if (state.mayoCount >= 3) { state.invincibleTimer = 5; state.mayoCount = 0; if(tg) tg.HapticFeedback.notificationOccurred('success'); }
+      }
+      else if (o.type === 'smetana') { state.lives = Math.min(3, state.lives+1); o.collected = true; }
+      updateHUD();
+    }
+  }
+
+  if (Math.random() < 0.01 && state.currentLevel >= 1 && state.flyingTomatoes.length < 3) {
+      state.flyingTomatoes.push({ x: p.x + 100, y: state.groundY - 120, w: 40, h: 40, rot: 0, isBird: true, vy: 150 });
   }
 
   for (let i = state.flyingTomatoes.length - 1; i >= 0; i--) {
     const t = state.flyingTomatoes[i];
-    t.x -= (speed + 200) * dt; 
-    t.rot += dt * 10;
+    t.x -= (speed + (t.isBird ? 100 : 200)) * dt;
+    if (t.isBird) t.y += (t.vy || 0) * dt; else t.rot += dt * 10;
     
-    if (t.x < -30) {
-      state.flyingTomatoes.splice(i, 1);
-      continue;
-    }
+    if (t.x < -50) { state.flyingTomatoes.splice(i, 1); continue; }
 
     const catTop = state.groundY - (p.isDucking ? 25 : p.height) + p.y;
     const catBottom = state.groundY + p.y;
-    const catLeft = p.x;
-    const catRight = p.x + p.width;
-
-    if (t.x + t.w > catLeft && t.x < catRight && t.y + t.h > catTop && t.y < catBottom) {
+    if (t.x + t.w > p.x && t.x < p.x + p.width && t.y + t.h > catTop && t.y < catBottom) {
       state.flyingTomatoes.splice(i, 1);
-      state.lives--;
-      state.hugProgress = Math.min(1, state.hugProgress + 0.18);
-      updateHUD();
-      if (tg) tg.HapticFeedback.impactOccurred('heavy');
-      if (state.lives <= 0) { endGame('hp'); return; }
+      if (state.invincibleTimer <= 0) takeDamage();
+      state.combo = 1;
     }
   }
 
-  if (state.cat === 'grey') {
-    state.poopTimer -= dt;
-    if (state.poopTimer <= 0) {
-      state.poops.push({
-        x: p.x,
-        y: state.groundY - 10,
-        size: 16,
-        rot: Math.random() * Math.PI * 2
-      });
-      state.poopTimer = 0.4 + Math.random() * 0.3;
+  for (let i = state.hearts.length - 1; i >= 0; i--) {
+    const h = state.hearts[i];
+    h.x += h.vx * dt; h.y += h.vy * dt; h.vy += 400 * dt;
+    if (h.x > W) { state.hearts.splice(i, 1); continue; }
+    if (Math.abs(h.x - p.x) < 40 && Math.abs(h.y - (state.groundY - p.height)) < 50) {
+      state.hearts.splice(i, 1);
+      state.slipTimer = 2.0; 
+      if(tg) tg.HapticFeedback.impactOccurred('heavy');
     }
   }
 
-  for (let i = state.objects.length - 1; i >= 0; i--) {
-    const o = state.objects[i];
-    o.x -= speed * dt;
-    if (o.x + o.w < -20) { state.objects.splice(i, 1); continue; }
-
-    const catHeight = p.isDucking ? 25 : p.height;
-    const py = state.groundY - catHeight + p.y; 
-    const px = p.x;
-
-    if (!o.collected && (
-      px + 6 < o.x + o.w && px + p.width - 6 > o.x &&
-      py + 6 < state.groundY - o.h + o.h && py + catHeight - 6 > state.groundY - o.h
-    )) {
-      if (o.type === 'tomato') {
-        o.collected = true;
-        state.lives--;
-        p.stumbleTimer = 0.6;
-        state.hugProgress = Math.min(1, state.hugProgress + 0.18);
-        updateHUD();
-        if (tg) tg.HapticFeedback.impactOccurred('heavy');
-        if (state.lives <= 0) { endGame('hp'); return; }
-      } else {
-        o.collected = true;
-        state.score += o.type === 'shrimp' ? 1 : 2;
-        updateHUD();
-        if (tg) tg.HapticFeedback.impactOccurred(o.type === 'mayo' ? 'medium' : 'light');
-      }
-    }
-  }
-
-  for (let i = state.poops.length - 1; i >= 0; i--) {
-    const poop = state.poops[i];
-    poop.x -= speed * dt;
-    if (poop.x < -30) state.poops.splice(i, 1);
-  }
-
-  let hugDelta = p.stumbleTimer > 0 ? state.hugRate * 2.2 * dt : -state.hugRecover * dt;
+  let hugDelta = (p.stumbleTimer > 0 || p.isDucking) ? 0.15 * dt : -0.1 * dt;
   state.hugProgress = Math.max(0, Math.min(1, state.hugProgress + hugDelta));
-
-  const vStart = W * 0.02;
-  const vEnd = p.x - 60;
-  state.veronica = {
-    x: vStart + (vEnd - vStart) * state.hugProgress,
-    y: state.groundY,
-    bob: Math.sin(performance.now() / 200) * 3,
-  };
+  state.veronica = { x: (W * 0.02) + (p.x - 80 - W * 0.02) * state.hugProgress, y: state.groundY };
 
   if (state.hugProgress >= 1) endGame('hug');
 }
 
-function render() {
-  ctx.clearRect(0, 0, W, H);
-
-  // Земля
-  ctx.fillStyle = 'rgba(26, 26, 46, 0.8)'; 
-  ctx.fillRect(0, state.groundY, W, H - state.groundY);
-  
-  ctx.strokeStyle = '#ffd16644';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, state.groundY);
-  ctx.lineTo(W, state.groundY);
-  ctx.stroke();
-
-  // Разметка
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.lineWidth = 3;
-  const dashOffset = (state.scrollOffset * 0.6) % 60;
-  for (let x = -dashOffset; x < W; x += 60) {
-    ctx.beginPath();
-    ctx.moveTo(x, state.groundY + 14);
-    ctx.lineTo(x + 30, state.groundY + 14);
-    ctx.stroke();
-  }
-
-  // КСЮША
-  if (state.currentLevel >= 2 && state.running) {
-    const kx = W - 60; 
-    const ky = state.groundY - 120; 
-    const bob = Math.sin(performance.now() / 150) * 5;
-    
-    if (imgKsyusha.complete && imgKsyusha.naturalHeight !== 0) {
-      ctx.drawImage(imgKsyusha, kx, ky + bob, 70, 70);
-    } else {
-      ctx.font = '50px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('👧', kx + 35, ky + 35 + bob);
-    }
-  }
-
-  // Летящие помидоры
-  state.flyingTomatoes.forEach(t => {
-    ctx.save();
-    ctx.translate(t.x + t.w/2, t.y + t.h/2);
-    ctx.rotate(t.rot);
-    
-    if (imgTomato.complete && imgTomato.naturalHeight !== 0) {
-      ctx.drawImage(imgTomato, -t.w/2, -t.h/2, t.w, t.h);
-    } else {
-      ctx.font = `${t.w}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('🍅', 0, 0);
-    }
-    ctx.restore();
-  });
-
-  // Какашки
-  state.poops.forEach(poop => {
-    ctx.save();
-    ctx.translate(poop.x, poop.y);
-    ctx.rotate(poop.rot);
-    ctx.font = `${poop.size}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('💩', 0, 0);
-    ctx.restore();
-  });
-
-  // Земные объекты
-  state.objects.forEach(o => {
-    if (o.collected) return;
-    const y = state.groundY - o.h;
-    const cx = o.x + o.w / 2;
-    const cy = y + o.h / 2;
-    
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    if (o.type === 'tomato') {
-      if (imgTomato.complete && imgTomato.naturalHeight !== 0) {
-        ctx.drawImage(imgTomato, o.x, y, o.w, o.h);
-      } else {
-        ctx.font = `${o.w}px serif`;
-        ctx.fillText('🍅', cx, cy);
-      }
-    } else if (o.type === 'shrimp') {
-      const bob = Math.sin(o.bob + performance.now() / 300) * 3;
-      if (imgShrimp.complete && imgShrimp.naturalHeight !== 0) {
-        ctx.drawImage(imgShrimp, o.x, y + bob, o.w, o.h);
-      } else {
-        ctx.font = `${o.w}px serif`;
-        ctx.fillText('🦐', cx, cy + bob);
-      }
-    } else if (o.type === 'mayo') {
-      const bob = Math.sin(o.bob + performance.now() / 400) * 3;
-      if (imgMayo.complete && imgMayo.naturalHeight !== 0) {
-        ctx.drawImage(imgMayo, o.x, y + bob, o.w, o.h);
-      } else {
-        ctx.font = `${o.w}px serif`;
-        ctx.fillText('🥫', cx, cy + bob);
-      }
-    }
-  });
-
-  // ВЕРОНИКА (с картинкой)
-  if (state.veronica && state.running) {
-    const v = state.veronica;
-    const heartBob = Math.sin(performance.now() / 250) * 4;
-    
-    // Сердечки
-    ctx.font = '20px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('💕', v.x, state.groundY - 100 + heartBob);
-    
-    // Картинка Вероники
-    if (imgVeronika.complete && imgVeronika.naturalHeight !== 0) {
-      ctx.drawImage(imgVeronika, v.x - 35, state.groundY - 80 + v.bob, 70, 70);
-    } else {
-      ctx.font = '44px serif';
-      ctx.fillText('👩', v.x, state.groundY - 30 + v.bob);
-    }
-    
-    // Подпись
-    ctx.font = '10px sans-serif';
-    ctx.fillStyle = '#ff9f43cc';
-    ctx.fillText('Вероника', v.x, state.groundY - 85);
-    ctx.fillStyle = '#fff';
-  }
-
-  if (!state.running) return;
-
-  // Кот
-  const p = state.player;
-  if (p) {
-    const px = p.x;
-    const py = state.groundY - p.height + p.y; 
-
-    const shadowScale = 1 - Math.min(0.6, Math.abs(p.y) / 300);
-    ctx.fillStyle = `rgba(0,0,0,${0.35 * shadowScale})`;
-    ctx.beginPath();
-    ctx.ellipse(px + p.width / 2, state.groundY - 4, p.width * 0.5 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    let bobY = 0;
-    let rot = 0;
-    if (p.onGround) {
-      bobY = Math.abs(Math.sin(p.anim * 15)) * 4;
-    } else {
-      rot = 0.2; 
-    }
-
-    if (p.stumbleTimer > 0) {
-      rot = Math.sin(p.stumbleTimer * 40) * 0.25;
-      bobY += 4;
-    }
-
-    ctx.save();
-    let scaleX = 1;
-    let scaleY = 1;
-    
-    if (p.isDucking) {
-      scaleX = 1.3; 
-      scaleY = 0.5;
-      bobY = 0;
-      rot = 0;
-    }
-
-    ctx.translate(px + p.width / 2, py + p.height / 2 - bobY);
-    ctx.scale(scaleX, scaleY);
-    ctx.rotate(rot);
-    
-    const catImage = state.cat === 'baksik' ? imgBaksik : imgGrey;
-    if (catImage.complete && catImage.naturalHeight !== 0) {
-        ctx.drawImage(catImage, -30, -30, 60, 60);
-    } else {
-        ctx.font = '40px serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(p.cfg.emoji, 0, 0);
-    }
-    
-    ctx.restore();
-  }
-
-  // Плашка уровня
-  if (state.levelUpTimer > 0) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    ctx.fillRect(0, H * 0.4 - 40, W, 80);
-    
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    ctx.fillStyle = '#4cd137';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.fillText(`УРОВЕНЬ ${state.currentLevel + 1}`, W / 2, H * 0.4 - 10);
-    
-    ctx.fillStyle = '#ffd166';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.fillText(`«${LEVELS[state.currentLevel].name}»`, W / 2, H * 0.4 + 20);
-  }
+function takeDamage() {
+  state.lives--;
+  state.player.stumbleTimer = 0.5;
+  if (tg) tg.HapticFeedback.impactOccurred('heavy');
+  if (state.lives <= 0) endGame('hp');
 }
 
 function updateHUD() {
   document.getElementById('lives').textContent = Math.max(0, state.lives);
   document.getElementById('score').textContent = state.score;
   document.getElementById('hug-bar').style.width = (state.hugProgress * 100) + '%';
+  
+  const buffsDiv = document.getElementById('buffs');
+  buffsDiv.innerHTML = '';
+  if (state.invincibleTimer > 0) buffsDiv.innerHTML += '<span class="buff-icon">🥫 Броня</span>';
+  if (state.slipTimer > 0) buffsDiv.innerHTML += '<span class="buff-icon" style="color:red">💖 Влюблен</span>';
+  if (state.slipTimer > 0) buffsDiv.innerHTML += '<span class="buff-icon">🌊 Скользит</span>';
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  
+  ctx.fillStyle = LEVELS[state.currentLevel].tint;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(26, 26, 46, 0.8)'; ctx.fillRect(0, state.groundY, W, H - state.groundY);
+  ctx.strokeStyle = '#ffd16644'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, state.groundY); ctx.lineTo(W, state.groundY); ctx.stroke();
+
+  state.groundObjects.forEach(o => {
+    if (o.collected) return;
+    const y = state.groundY - o.h;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    
+    if (o.type === 'grandma') {
+        if(imgGrandma.complete) ctx.drawImage(imgGrandma, o.x, y, o.w, o.h); else { ctx.font = '40px serif'; ctx.fillText('👵', o.x+25, y+25); }
+    } else if (o.type === 'puddle') {
+        ctx.fillStyle = '#6bb9f0'; ctx.beginPath(); ctx.ellipse(o.x+15, state.groundY-5, 25, 8, 0, 0, Math.PI*2); ctx.fill();
+    } else if (o.type === 'tomato') {
+        if(imgTomato.complete) ctx.drawImage(imgTomato, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🍅', o.x+15, y+15); }
+    } else if (o.type === 'shrimp') {
+        if(imgShrimp.complete) ctx.drawImage(imgShrimp, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🦐', o.x+15, y+15); }
+    } else if (o.type === 'mayo') {
+        if(imgMayo.complete) ctx.drawImage(imgMayo, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🥫', o.x+15, y+15); }
+    } else if (o.type === 'smetana') {
+        if(imgSmetana.complete) ctx.drawImage(imgSmetana, o.x, y, o.w, o.h); else { ctx.font = '30px serif'; ctx.fillText('🥛', o.x+15, y+15); }
+    }
+  });
+
+  state.flyingTomatoes.forEach(t => {
+    ctx.save(); ctx.translate(t.x + t.w/2, t.y + t.h/2); ctx.rotate(t.rot);
+    if (t.isBird) { ctx.font = '40px serif'; ctx.fillText('🕊️', 0, 0); } 
+    else if (t.isMelon) { ctx.font = '50px serif'; ctx.fillText('🍉', 0, 0); } 
+    else { 
+        if(imgTomato.complete) ctx.drawImage(imgTomato, -t.w/2, -t.h/2, t.w, t.h); 
+        else { ctx.font = '34px serif'; ctx.fillText('🍅', 0, 0); }
+    }
+    ctx.restore();
+  });
+
+  state.hearts.forEach(h => { ctx.font = '30px serif'; ctx.fillText('💖', h.x, h.y); });
+  state.poops.forEach(p => { ctx.font = '20px serif'; ctx.fillText('💩', p.x, p.y); });
+
+  if (state.running) {
+    if (state.currentLevel >= 2) {
+        if(imgKsyusha.complete) ctx.drawImage(imgKsyusha, W-70, state.groundY-120, 60, 60);
+        else { ctx.font = '50px serif'; ctx.fillText('👧', W-40, state.groundY-90); }
+    }
+
+    if (state.veronica) {
+        ctx.font = '20px serif'; ctx.fillText('💕', state.veronica.x, state.groundY - 80);
+        if(imgVeronika.complete) ctx.drawImage(imgVeronika, state.veronica.x-30, state.groundY-70, 60, 60);
+        else { ctx.font = '40px serif'; ctx.fillText('👩', state.veronica.x, state.groundY-30); }
+    }
+
+    const p = state.player;
+    const py = state.groundY - (p.isDucking ? 25 : p.height) + p.y;
+    ctx.save();
+    
+    if (p.isDucking) ctx.scale(1.3, 0.6);
+    else if (!p.onGround) ctx.rotate(0.2);
+    else if (p.stumbleTimer > 0) ctx.rotate(Math.sin(p.stumbleTimer * 40) * 0.3);
+    if (state.invincibleTimer > 0) ctx.scale(1.3, 1.3);
+
+    ctx.translate(p.x + p.width/2, py + p.height/2);
+    
+    const catImg = state.cat === 'baksik' ? imgBaksik : imgGrey;
+    if (catImg.complete) ctx.drawImage(catImg, -30, -30, 60, 60);
+    else { ctx.font = '40px serif'; ctx.fillText('🐱', 0, 0); }
+    
+    if (!p.onGround) { ctx.font = '20px serif'; ctx.fillText('😝', 15, -15); }
+    if (p.stumbleTimer > 0) { ctx.font = '20px serif'; ctx.fillText('😵', 15, -15); }
+    
+    ctx.restore();
+  }
+
+  if (state.levelUpTimer > 0) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, H * 0.4 - 40, W, 80);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#4cd137'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(`УРОВЕНЬ ${state.currentLevel + 1}`, W / 2, H * 0.4 - 10);
+    ctx.fillStyle = '#ffd166'; ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(`«${LEVELS[state.currentLevel].name}»`, W / 2, H * 0.4 + 20);
+  }
 }
 
 function loop(time) {
   if (!state.lastTime) state.lastTime = time;
   const dt = Math.min(0.05, (time - state.lastTime) / 1000);
   state.lastTime = time;
-
   if (state.running) update(dt);
   render();
-  if (state.running) {
-    document.getElementById('hug-bar').style.width = (state.hugProgress * 100) + '%';
-  }
-
   requestAnimationFrame(loop);
 }
 
 function jump() {
   const p = state.player;
-  if (!p || !state.running) return; 
+  if (!p || !state.running || p.isDucking || state.slipTimer > 0) return; 
   
-  if (p.onGround && !p.isDucking) {
-    p.vy = -p.cfg.jump; 
-    p.onGround = false;
-    p.y = -1; 
+  const maxJumps = state.cat === 'baksik' ? 2 : 1;
+  if (p.jumpCount < maxJumps) {
+    p.vy = -p.cfg.jump; p.jumpCount++; p.onGround = false;
     if (tg) tg.HapticFeedback.impactOccurred('light');
   }
 }
 
-// --- УПРАВЛЕНИЕ ---
-const jumpBtn = document.getElementById('jump-btn');
+document.getElementById('jump-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); jump(); });
 const duckBtn = document.getElementById('duck-btn');
-
-jumpBtn.addEventListener('pointerdown', (e) => { 
-    e.preventDefault(); 
-    e.stopPropagation(); 
-    jump(); 
-});
-
-duckBtn.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (state.player) state.player.isDucking = true;
-});
-duckBtn.addEventListener('pointerup', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (state.player) state.player.isDucking = false;
-});
-duckBtn.addEventListener('pointercancel', (e) => {
-    if (state.player) state.player.isDucking = false;
-});
-duckBtn.addEventListener('pointerleave', (e) => {
-    if (state.player) state.player.isDucking = false;
-});
+duckBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); if(state.player) state.player.isDucking = true; });
+duckBtn.addEventListener('pointerup', (e) => { if(state.player) state.player.isDucking = false; });
+duckBtn.addEventListener('pointerleave', (e) => { if(state.player) state.player.isDucking = false; });
 
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); jump(); }
-  if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); if (state.player) state.player.isDucking = true; }
+  if (e.code === 'Space' || e.code === 'ArrowUp') jump();
+  if (e.code === 'ArrowDown') { if(state.player) state.player.isDucking = true; }
 });
 window.addEventListener('keyup', (e) => {
-  if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); if (state.player) state.player.isDucking = false; }
+  if (e.code === 'ArrowDown') { if(state.player) state.player.isDucking = false; }
 });
 
 function startGame(catKey) {
   state.cat = catKey;
   state.player = createPlayer(catKey);
-  state.objects = [];
-  state.flyingTomatoes = [];
-  state.poops = [];
-  state.score = 0;
-  state.lives = 3;
-  
-  state.worldSpeed = 320;
-  state.spawnTimer = 0.8;
-  state.spawnInterval = 0.75;
-  state.flyTimer = 1.5; 
-  state.distance = 0;
-  state.currentLevel = 0;
-  state.levelUpTimer = 0;
-  document.getElementById('level-info').textContent = `Ур. 1: Дело — потеха`;
-  
-  state.poopTimer = 1; 
-  state.scrollOffset = 0;
-  state.hugProgress = 0;
-  state.hugRate = CAT_CONFIG[catKey].hugRate;
-  state.hugRecover = 0.12;
-  state.veronica = null;
-  state.running = true;
-  state.lastTime = 0;
+  state.groundObjects = []; state.flyingTomatoes = []; state.hearts = []; state.poops = [];
+  state.score = 0; state.lives = 3; state.combo = 1; state.mayoCount = 0;
+  state.invincibleTimer = 0; state.slipTimer = 0;
+  state.worldSpeed = 320; state.spawnTimer = 1; state.spawnInterval = 0.8; state.flyTimer = 3; state.heartTimer = 4;
+  state.distance = 0; state.currentLevel = 0; state.hugProgress = 0;
+  state.running = true; state.lastTime = 0;
 
   document.getElementById('menu').style.display = 'none';
   document.getElementById('gameover').style.display = 'none';
   document.getElementById('hud').style.display = 'flex';
-  jumpBtn.style.display = 'flex';
-  duckBtn.style.display = 'flex';
+  document.getElementById('jump-btn').style.display = 'flex';
+  document.getElementById('duck-btn').style.display = 'flex';
+  document.getElementById('music-btn').style.display = 'block';
+  
+  document.getElementById('level-info').textContent = `Ур. 1: Дело — потеха`;
   updateHUD();
-  if (tg) tg.HapticFeedback.impactOccurred('medium');
+  startMusic();
 }
 
 function endGame(reason) {
   state.running = false;
-  const title = document.getElementById('gameover-title');
-  if (reason === 'hug') {
-    title.textContent = 'Вероника заобнимала! 💕';
-  } else {
-    title.textContent = 'Кот устал от помидоров!';
-  }
+  document.getElementById('gameover-title').textContent = reason === 'hug' ? 'Вероника заобнимала! 💕' : 'Кот устал от помидоров!';
   document.getElementById('final-score').textContent = state.score;
+  
+  if (state.score > state.bestScore) {
+      state.bestScore = state.score;
+      document.getElementById('best-score').textContent = state.bestScore;
+      if (tg && tg.CloudStorage) tg.CloudStorage.setItem('bestScore', state.bestScore.toString());
+  } else {
+      document.getElementById('best-score').textContent = state.bestScore;
+  }
+
   document.getElementById('gameover').style.display = 'flex';
-  jumpBtn.style.display = 'none';
-  duckBtn.style.display = 'none';
+  document.getElementById('jump-btn').style.display = 'none';
+  document.getElementById('duck-btn').style.display = 'none';
+  document.getElementById('music-btn').style.display = 'none';
   if (tg) tg.HapticFeedback.notificationOccurred('error');
 }
+
+document.getElementById('share-btn').addEventListener('click', () => {
+    const text = `Я пробежал по Твери и набрал ${state.score} очков! А ты сможешь?`;
+    if (tg) tg.switchInlineQuery(text, ['users', 'groups']);
+    else alert('Поделиться можно только в Telegram!');
+});
 
 let selectedCat = null;
 document.querySelectorAll('.cat-btn').forEach(btn => {
@@ -732,14 +536,9 @@ document.querySelectorAll('.cat-btn').forEach(btn => {
     btn.classList.add('selected');
     selectedCat = btn.dataset.cat;
     document.getElementById('start-btn').style.display = 'block';
-    if (tg) tg.HapticFeedback.selectionChanged();
   });
 });
-
-document.getElementById('start-btn').addEventListener('click', () => {
-  if (selectedCat) startGame(selectedCat);
-});
-
+document.getElementById('start-btn').addEventListener('click', () => { if (selectedCat) startGame(selectedCat); });
 document.getElementById('restart-btn').addEventListener('click', () => {
   document.getElementById('gameover').style.display = 'none';
   document.getElementById('menu').style.display = 'flex';
@@ -748,16 +547,9 @@ document.getElementById('restart-btn').addEventListener('click', () => {
   document.getElementById('start-btn').style.display = 'none';
 });
 
-function init() {
-  resize();
-  state.groundY = H * 0.78;
-  requestAnimationFrame(loop);
-}
+function init() { resize(); state.groundY = H * 0.78; requestAnimationFrame(loop); }
 init();
-window.addEventListener('resize', () => {
-  resize();
-  state.groundY = H * 0.78;
-});
+window.addEventListener('resize', () => { resize(); state.groundY = H * 0.78; });
 </script>
 </body>
 </html>
