@@ -15,22 +15,19 @@
     touch-action: none;
   }
   
-  /* ТУТ МЫ СТАВИМ ФОН НА ВЕСЬ КОНТЕЙНЕР */
   #game { 
     position: relative; width: 100vw; height: 100vh; max-width: 500px; max-height: 900px; overflow: hidden; 
     background: url('bg.png') center/cover no-repeat;
-    background-color: #2a2a4a; /* Запасной цвет, если картинки нет */
+    background-color: #2a2a4a;
   }
   
-  /* Холст делаем прозрачным, чтобы фон просвечивал */
   canvas { display: block; width: 100%; height: 100%; background: transparent; }
 
-  /* Меню делаем полупрозрачным, чтобы сквозь него был виден фон */
   #menu {
     position: absolute; inset: 0; z-index: 10;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 20px; padding: 20px;
-    background: rgba(26, 26, 46, 0.6); /* Было 0.85, стало 0.6 */
+    background: rgba(26, 26, 46, 0.6);
     text-align: center;
   }
   #menu h1 { font-size: 22px; line-height: 1.3; }
@@ -60,7 +57,6 @@
   }
   #hud .row { display: flex; justify-content: space-between; align-items: center; }
   #hud .score { color: #ffd166; }
-  
   #level-info { text-align: center; font-size: 13px; color: #4cd137; text-transform: uppercase; max-width: 50%; line-height: 1.2;}
 
   #hug-bar-wrap {
@@ -76,19 +72,23 @@
   }
   #hug-label { font-size: 11px; opacity: 0.85; margin-top: 2px; text-align: center; }
 
-  #jump-btn {
-    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-    z-index: 5; width: 140px; height: 140px; border-radius: 50%;
+  /* Кнопки управления */
+  #jump-btn, #duck-btn {
+    position: absolute; bottom: 30px; z-index: 5;
+    width: 110px; height: 110px; border-radius: 50%;
     background: rgba(255, 209, 102, 0.2); border: 4px solid #ffd166;
-    color: #ffd166; font-size: 24px; font-weight: bold; cursor: pointer;
+    color: #ffd166; font-size: 18px; font-weight: bold; cursor: pointer;
     display: none; align-items: center; justify-content: center;
     text-shadow: 0 2px 4px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     touch-action: none;
   }
-  #jump-btn:active { background: rgba(255, 209, 102, 0.5); transform: translateX(-50%) scale(0.95); }
+  #jump-btn { right: 20px; }
+  #duck-btn { left: 20px; background: rgba(107, 185, 240, 0.2); border-color: #6bb9f0; color: #6bb9f0;}
+  
+  #jump-btn:active { background: rgba(255, 209, 102, 0.5); transform: scale(0.95); }
+  #duck-btn:active { background: rgba(107, 185, 240, 0.5); transform: scale(0.95); }
 
-  /* Экран проигрыша тоже полупрозрачный */
   #gameover {
     position: absolute; inset: 0; z-index: 10; display: none;
     flex-direction: column; align-items: center; justify-content: center; gap: 16px;
@@ -121,7 +121,7 @@
 
   <div id="menu">
     <h1>Баксик и Серый</h1>
-    <p>Вероника хочет заобнимать котов! Они убегают по Твери. Собирай креветки и майонез, не наступай на помидоры!</p>
+    <p>Вероника хочет заобнимать котов! Собирай еду, прыгай через помидоры и пригибайся, когда Ксюша кидает сверху!</p>
     <div class="cats">
       <button class="cat-btn" data-cat="baksik">
         <img src="baksik.png" class="cat-img" alt="Баксик">
@@ -137,6 +137,7 @@
     <button id="start-btn">Играть</button>
   </div>
 
+  <button id="duck-btn">ВНИЗ</button>
   <button id="jump-btn">ПРЫЖОК</button>
 
   <div id="gameover">
@@ -154,12 +155,14 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 let W = 0, H = 0;
 
-// Загрузка картинок (фон теперь грузится через CSS, но коты и объекты остаются)
+// Загрузка картинок
 const imgBaksik = new Image(); imgBaksik.src = 'baksik.png';
 const imgGrey = new Image(); imgGrey.src = 'grey.png';
 const imgTomato = new Image(); imgTomato.src = 'tomato.png';
 const imgShrimp = new Image(); imgShrimp.src = 'shrimp.png';
 const imgMayo = new Image(); imgMayo.src = 'mayo.png';
+const imgKsyusha = new Image(); imgKsyusha.src = 'ksyusha.png';
+const imgVeronika = new Image(); imgVeronika.src = 'veronika.png'; // НОВАЯ КАРТИНКА ВЕРОНИКИ
 
 function resize() {
   const rect = document.getElementById('game').getBoundingClientRect();
@@ -182,13 +185,15 @@ const state = {
   running: false,
   cat: null,
   player: null,
-  objects: [],
+  objects: [],          
+  flyingTomatoes: [],   
   poops: [],
   score: 0,
   lives: 3,
   worldSpeed: 320,
   spawnTimer: 0,
   spawnInterval: 0.75,
+  flyTimer: 0,          
   poopTimer: 0,
   lastTime: 0,
   groundY: 0,
@@ -216,6 +221,7 @@ function createPlayer(catKey) {
     width: 46,
     height: 46,
     onGround: true,
+    isDucking: false, 
     cfg,
     anim: 0,
     stumbleTimer: 0,
@@ -249,8 +255,14 @@ function update(dt) {
   const p = state.player;
   if (!p) return;
 
-  p.vy += 2200 * dt; 
-  p.y += p.vy * dt;  
+  if (p.isDucking) {
+    p.y = 0;
+    p.vy = 0;
+    p.onGround = true;
+  } else {
+    p.vy += 2200 * dt; 
+    p.y += p.vy * dt;  
+  }
 
   if (p.y >= 0) { 
     p.y = 0; 
@@ -288,6 +300,45 @@ function update(dt) {
     state.spawnTimer = state.spawnInterval * (0.65 + Math.random() * 0.7);
   }
 
+  if (state.currentLevel >= 2) {
+    state.flyTimer -= dt;
+    if (state.flyTimer <= 0) {
+      state.flyingTomatoes.push({
+        x: W - 30, 
+        y: state.groundY - 80, 
+        w: 34,
+        h: 34,
+        rot: 0
+      });
+      state.flyTimer = 1.5 + Math.random(); 
+    }
+  }
+
+  for (let i = state.flyingTomatoes.length - 1; i >= 0; i--) {
+    const t = state.flyingTomatoes[i];
+    t.x -= (speed + 200) * dt; 
+    t.rot += dt * 10;
+    
+    if (t.x < -30) {
+      state.flyingTomatoes.splice(i, 1);
+      continue;
+    }
+
+    const catTop = state.groundY - (p.isDucking ? 25 : p.height) + p.y;
+    const catBottom = state.groundY + p.y;
+    const catLeft = p.x;
+    const catRight = p.x + p.width;
+
+    if (t.x + t.w > catLeft && t.x < catRight && t.y + t.h > catTop && t.y < catBottom) {
+      state.flyingTomatoes.splice(i, 1);
+      state.lives--;
+      state.hugProgress = Math.min(1, state.hugProgress + 0.18);
+      updateHUD();
+      if (tg) tg.HapticFeedback.impactOccurred('heavy');
+      if (state.lives <= 0) { endGame('hp'); return; }
+    }
+  }
+
   if (state.cat === 'grey') {
     state.poopTimer -= dt;
     if (state.poopTimer <= 0) {
@@ -306,7 +357,14 @@ function update(dt) {
     o.x -= speed * dt;
     if (o.x + o.w < -20) { state.objects.splice(i, 1); continue; }
 
-    if (!o.collected && hitTest(p, o)) {
+    const catHeight = p.isDucking ? 25 : p.height;
+    const py = state.groundY - catHeight + p.y; 
+    const px = p.x;
+
+    if (!o.collected && (
+      px + 6 < o.x + o.w && px + p.width - 6 > o.x &&
+      py + 6 < state.groundY - o.h + o.h && py + catHeight - 6 > state.groundY - o.h
+    )) {
       if (o.type === 'tomato') {
         o.collected = true;
         state.lives--;
@@ -344,32 +402,13 @@ function update(dt) {
   if (state.hugProgress >= 1) endGame('hug');
 }
 
-function hitTest(p, o) {
-  const px = p.x;
-  const py = state.groundY - p.height + p.y; 
-  const pw = p.width;
-  const ph = p.height;
-  
-  const ox = o.x;
-  const oy = state.groundY - o.h;
-  const ow = o.w;
-  const oh = o.h;
-  const pad = 6;
-  
-  return (
-    px + pad < ox + ow && px + pw - pad > ox &&
-    py + pad < oy + oh && py + ph - pad > oy
-  );
-}
-
 function render() {
   ctx.clearRect(0, 0, W, H);
 
-  // Фон теперь в CSS, поэтому тут просто закрашиваем землю полупрозрачным слоем!
-  ctx.fillStyle = 'rgba(26, 26, 46, 0.8)'; // Полупрозрачная земля
+  // Земля
+  ctx.fillStyle = 'rgba(26, 26, 46, 0.8)'; 
   ctx.fillRect(0, state.groundY, W, H - state.groundY);
   
-  // Линия земли
   ctx.strokeStyle = '#ffd16644';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -388,6 +427,39 @@ function render() {
     ctx.stroke();
   }
 
+  // КСЮША
+  if (state.currentLevel >= 2 && state.running) {
+    const kx = W - 60; 
+    const ky = state.groundY - 120; 
+    const bob = Math.sin(performance.now() / 150) * 5;
+    
+    if (imgKsyusha.complete && imgKsyusha.naturalHeight !== 0) {
+      ctx.drawImage(imgKsyusha, kx, ky + bob, 70, 70);
+    } else {
+      ctx.font = '50px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('👧', kx + 35, ky + 35 + bob);
+    }
+  }
+
+  // Летящие помидоры
+  state.flyingTomatoes.forEach(t => {
+    ctx.save();
+    ctx.translate(t.x + t.w/2, t.y + t.h/2);
+    ctx.rotate(t.rot);
+    
+    if (imgTomato.complete && imgTomato.naturalHeight !== 0) {
+      ctx.drawImage(imgTomato, -t.w/2, -t.h/2, t.w, t.h);
+    } else {
+      ctx.font = `${t.w}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🍅', 0, 0);
+    }
+    ctx.restore();
+  });
+
   // Какашки
   state.poops.forEach(poop => {
     ctx.save();
@@ -400,7 +472,7 @@ function render() {
     ctx.restore();
   });
 
-  // Объекты
+  // Земные объекты
   state.objects.forEach(o => {
     if (o.collected) return;
     const y = state.groundY - o.h;
@@ -436,19 +508,29 @@ function render() {
     }
   });
 
-  // Вероника
+  // ВЕРОНИКА (с картинкой)
   if (state.veronica && state.running) {
     const v = state.veronica;
     const heartBob = Math.sin(performance.now() / 250) * 4;
+    
+    // Сердечки
     ctx.font = '20px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('💕', v.x, state.groundY - 90 + heartBob);
-    ctx.font = '44px serif';
-    ctx.fillText('👩', v.x, state.groundY - 30 + v.bob);
+    ctx.fillText('💕', v.x, state.groundY - 100 + heartBob);
+    
+    // Картинка Вероники
+    if (imgVeronika.complete && imgVeronika.naturalHeight !== 0) {
+      ctx.drawImage(imgVeronika, v.x - 35, state.groundY - 80 + v.bob, 70, 70);
+    } else {
+      ctx.font = '44px serif';
+      ctx.fillText('👩', v.x, state.groundY - 30 + v.bob);
+    }
+    
+    // Подпись
     ctx.font = '10px sans-serif';
     ctx.fillStyle = '#ff9f43cc';
-    ctx.fillText('Вероника', v.x, state.groundY - 70);
+    ctx.fillText('Вероника', v.x, state.groundY - 85);
     ctx.fillStyle = '#fff';
   }
 
@@ -480,7 +562,18 @@ function render() {
     }
 
     ctx.save();
+    let scaleX = 1;
+    let scaleY = 1;
+    
+    if (p.isDucking) {
+      scaleX = 1.3; 
+      scaleY = 0.5;
+      bobY = 0;
+      rot = 0;
+    }
+
     ctx.translate(px + p.width / 2, py + p.height / 2 - bobY);
+    ctx.scale(scaleX, scaleY);
     ctx.rotate(rot);
     
     const catImage = state.cat === 'baksik' ? imgBaksik : imgGrey;
@@ -538,7 +631,7 @@ function jump() {
   const p = state.player;
   if (!p || !state.running) return; 
   
-  if (p.onGround) {
+  if (p.onGround && !p.isDucking) {
     p.vy = -p.cfg.jump; 
     p.onGround = false;
     p.y = -1; 
@@ -546,21 +639,46 @@ function jump() {
   }
 }
 
+// --- УПРАВЛЕНИЕ ---
 const jumpBtn = document.getElementById('jump-btn');
+const duckBtn = document.getElementById('duck-btn');
+
 jumpBtn.addEventListener('pointerdown', (e) => { 
     e.preventDefault(); 
     e.stopPropagation(); 
     jump(); 
 });
 
+duckBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (state.player) state.player.isDucking = true;
+});
+duckBtn.addEventListener('pointerup', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (state.player) state.player.isDucking = false;
+});
+duckBtn.addEventListener('pointercancel', (e) => {
+    if (state.player) state.player.isDucking = false;
+});
+duckBtn.addEventListener('pointerleave', (e) => {
+    if (state.player) state.player.isDucking = false;
+});
+
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); jump(); }
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); if (state.player) state.player.isDucking = true; }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); if (state.player) state.player.isDucking = false; }
 });
 
 function startGame(catKey) {
   state.cat = catKey;
   state.player = createPlayer(catKey);
   state.objects = [];
+  state.flyingTomatoes = [];
   state.poops = [];
   state.score = 0;
   state.lives = 3;
@@ -568,6 +686,7 @@ function startGame(catKey) {
   state.worldSpeed = 320;
   state.spawnTimer = 0.8;
   state.spawnInterval = 0.75;
+  state.flyTimer = 1.5; 
   state.distance = 0;
   state.currentLevel = 0;
   state.levelUpTimer = 0;
@@ -586,6 +705,7 @@ function startGame(catKey) {
   document.getElementById('gameover').style.display = 'none';
   document.getElementById('hud').style.display = 'flex';
   jumpBtn.style.display = 'flex';
+  duckBtn.style.display = 'flex';
   updateHUD();
   if (tg) tg.HapticFeedback.impactOccurred('medium');
 }
@@ -601,6 +721,7 @@ function endGame(reason) {
   document.getElementById('final-score').textContent = state.score;
   document.getElementById('gameover').style.display = 'flex';
   jumpBtn.style.display = 'none';
+  duckBtn.style.display = 'none';
   if (tg) tg.HapticFeedback.notificationOccurred('error');
 }
 
