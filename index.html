@@ -21,7 +21,7 @@
     position: absolute; inset: 0; z-index: 10;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 20px; padding: 20px;
-    background: linear-gradient(180deg, #1a1a2e 0%, #2a2a4a 100%);
+    background: rgba(26,26,46,0.85); /* Полупрозрачное меню, чтобы фон было видно */
     text-align: center;
   }
   #menu h1 { font-size: 22px; line-height: 1.3; }
@@ -139,11 +139,13 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 let W = 0, H = 0;
 
-// Загрузка картинок котов
+// Загрузка картинок
 const imgBaksik = new Image();
 imgBaksik.src = 'baksik.png';
 const imgGrey = new Image();
 imgGrey.src = 'grey.png';
+const imgBg = new Image();
+imgBg.src = 'bg.png';
 
 function resize() {
   const rect = document.getElementById('game').getBoundingClientRect();
@@ -176,8 +178,8 @@ const state = {
 };
 
 const CAT_CONFIG = {
-  baksik: { name: 'Баксик', emoji: '🐱', speedMult: 0.95, jump: 800, hugRate: 0.055 },
-  grey:   { name: 'Серый',  emoji: '🐈‍⬛', speedMult: 1.15, jump: 800, hugRate: 0.065 },
+  baksik: { name: 'Баксик', emoji: '🐱', speedMult: 0.95, jump: 850, hugRate: 0.055 },
+  grey:   { name: 'Серый',  emoji: '🐈‍⬛', speedMult: 1.15, jump: 850, hugRate: 0.065 },
 };
 
 function createPlayer(catKey) {
@@ -218,13 +220,15 @@ function update(dt) {
   const p = state.player;
   if (!p) return;
 
-  p.vy += 2500 * dt; 
+  p.vy += 2200 * dt; 
   p.y += p.vy * dt;  
 
   if (p.y >= 0) { 
     p.y = 0; 
     p.vy = 0; 
     p.onGround = true; 
+  } else {
+    p.onGround = false;
   }
 
   p.anim += dt;
@@ -317,29 +321,30 @@ function hitTest(p, o) {
 function render() {
   ctx.clearRect(0, 0, W, H);
 
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, '#1a1a2e');
-  sky.addColorStop(1, '#3a3a5a');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, H);
+  // --- РИСУЕМ ФОН ---
+  if (imgBg.complete && imgBg.naturalHeight !== 0) {
+    const imgRatio = imgBg.width / imgBg.height;
+    const screenRatio = W / H;
+    let drawWidth = W;
+    let drawHeight = H;
+    let offsetX = 0;
+    let offsetY = 0;
 
-  const parallax = state.scrollOffset * 0.2;
-  ctx.fillStyle = '#2a2a4a';
-  const buildings = [0.05, 0.2, 0.38, 0.55, 0.72, 0.88, 1.05, 1.2];
-  buildings.forEach((bx, i) => {
-    const bw = 60 + (i % 3) * 25;
-    const bh = 90 + (i % 4) * 35;
-    const x = ((bx * W - parallax) % (W * 1.4) + W * 1.4) % (W * 1.4) - W * 0.2;
-    ctx.fillRect(x - bw / 2, state.groundY - bh, bw, bh);
-    ctx.fillStyle = '#ffd16622';
-    for (let wy = state.groundY - bh + 18; wy < state.groundY - 12; wy += 26) {
-      for (let wx = x - bw / 2 + 12; wx < x + bw / 2 - 12; wx += 20) {
-        ctx.fillRect(wx, wy, 9, 11);
-      }
+    if (imgRatio > screenRatio) {
+      drawWidth = H * imgRatio;
+      offsetX = (W - drawWidth) / 2;
+    } else {
+      drawHeight = W / imgRatio;
+      offsetY = (H - drawHeight) / 2;
     }
-    ctx.fillStyle = '#2a2a4a';
-  });
+    ctx.drawImage(imgBg, offsetX, offsetY, drawWidth, drawHeight);
+  } else {
+    // Если фона нет, рисуем темный
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, W, H);
+  }
 
+  // Земля (дорога)
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, state.groundY, W, H - state.groundY);
   ctx.strokeStyle = '#ffd16644';
@@ -349,6 +354,7 @@ function render() {
   ctx.lineTo(W, state.groundY);
   ctx.stroke();
 
+  // Разметка на дороге
   ctx.strokeStyle = '#ffffff15';
   ctx.lineWidth = 3;
   const dashOffset = (state.scrollOffset * 0.6) % 60;
@@ -359,6 +365,7 @@ function render() {
     ctx.stroke();
   }
 
+  // Какашки Серого
   state.poops.forEach(poop => {
     ctx.save();
     ctx.translate(poop.x, poop.y);
@@ -370,6 +377,7 @@ function render() {
     ctx.restore();
   });
 
+  // Помидоры, Креветки, Майонез
   state.objects.forEach(o => {
     if (o.collected) return;
     const y = state.groundY - o.h;
@@ -389,6 +397,7 @@ function render() {
     }
   });
 
+  // Вероника
   if (state.veronica && state.running) {
     const v = state.veronica;
     const heartBob = Math.sin(performance.now() / 250) * 4;
@@ -406,6 +415,7 @@ function render() {
 
   if (!state.running) return;
 
+  // Кот
   const p = state.player;
   if (p) {
     const px = p.x;
@@ -434,13 +444,10 @@ function render() {
     ctx.translate(px + p.width / 2, py + p.height / 2 - bobY);
     ctx.rotate(rot);
     
-    // Тут рисуется картинка кота
     const catImage = state.cat === 'baksik' ? imgBaksik : imgGrey;
     if (catImage.complete && catImage.naturalHeight !== 0) {
-        // Рисуем картинку 60x60 по центру
         ctx.drawImage(catImage, -30, -30, 60, 60);
     } else {
-        // Если картинка не загрузилась, рисуем смайлик (запасной вариант)
         ctx.font = '40px serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -473,12 +480,14 @@ function loop(time) {
 
 function jump() {
   const p = state.player;
-  if (!p || !state.running || !p.onGround) return; 
+  if (!p || !state.running) return; 
   
-  p.vy = -p.cfg.jump; 
-  p.onGround = false;
-  
-  if (tg) tg.HapticFeedback.impactOccurred('light');
+  if (p.onGround) {
+    p.vy = -p.cfg.jump; 
+    p.onGround = false;
+    p.y = -1; 
+    if (tg) tg.HapticFeedback.impactOccurred('light');
+  }
 }
 
 const jumpBtn = document.getElementById('jump-btn');
